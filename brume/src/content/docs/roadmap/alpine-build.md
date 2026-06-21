@@ -1,6 +1,10 @@
 ---
 title: Alpine build
 description: Produce a musl-based binary and image to reduce size and attack surface.
+roadmap:
+  group: Packaging
+  status: Planned
+  order: 1
 ---
 
 **Status:** Planned · **Priority:** 3
@@ -12,7 +16,7 @@ Produce a Brume binary and container image built on **Alpine Linux** (musl libc)
 ## Why it matters
 
 - **Smaller images** make CI pipelines faster and deployments cheaper.
-- **Reduced attack surface** matters for a tool that handles production data — fewer system libraries means fewer CVEs to track.
+- **Reduced attack surface** matters for a tool that handles production data. Fewer system libraries means fewer CVEs to track.
 - Alpine is the de-facto standard for security-conscious container deployments.
 
 ## What it'll unlock

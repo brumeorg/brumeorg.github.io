@@ -1,6 +1,10 @@
 ---
 title: Containerization
 description: Official Docker image, versioned tags, and usage documentation for run / compose / k8s.
+roadmap:
+  group: Packaging
+  status: Planned
+  order: 2
 ---
 
 **Status:** Planned · **Priority:** 4
@@ -11,7 +15,7 @@ Publish an **official Docker image** for Brume, with semantic version tags and c
 
 ## Why it matters
 
-Most production refreshes of staging environments are scheduled — they want a container they can drop into a cron or a workflow, mount secrets into, and forget about. Today users have to package Brume themselves.
+Most production refreshes of staging environments are scheduled. They want a container they can drop into a cron or a workflow, mount secrets into, and forget about. Today users have to package Brume themselves.
 
 ## What it'll unlock
 

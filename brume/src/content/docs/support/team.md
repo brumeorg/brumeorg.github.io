@@ -7,13 +7,9 @@ For questions that don't fit in a public issue, you can reach the maintainers di
 
 ## Maintainers
 
-### Frederik Voigt
+### Team contact
 
-- GitHub — [@Calgaryp](https://github.com/Calgaryp)
-
-### Alexandre James
-
-- GitHub — [@alexj181](https://github.com/alexj181) 
+brume.org@gmail.com
 
 ---
 

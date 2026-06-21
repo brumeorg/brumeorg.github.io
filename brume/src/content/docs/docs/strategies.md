@@ -13,7 +13,7 @@ A **strategy** defines *how a real value is transformed* before being written to
 | [`MASK`](#mask) | No | No | Yes | **Yes** |
 | [`HASH`](#hash) | No | Yes | No (fixed 64 chars) | No |
 | [`NULLIFY`](#nullify) | N/A | No | N/A | No |
-| [`FPE_ID`](#fpe_id) | Yes (with key) | Yes | Yes (integer → integer) | No |
+| [`FPE_ID`](#fpe_id) | Yes (with key) | Yes | Yes | No |
 | [`FPE_UUID`](#fpe_uuid) | Yes (with key) | Yes | Yes (UUID → UUID) | No |
 | [`KEEP`](#keep) | N/A | N/A | N/A | No |
 

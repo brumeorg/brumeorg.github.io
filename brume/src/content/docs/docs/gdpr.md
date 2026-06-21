@@ -28,7 +28,7 @@ In Brume, the *additional information* is precisely the pair `BRUME_HMAC_SECRET`
 
 ## What Brume does *not* do
 
-Be honest about the boundary — your DPO will appreciate it:
+Be honest about the boundary, your DPO will appreciate it:
 
 - Brume **does not anonymize**. The output is reversible with the secrets.
 - Brume **does not classify** which columns are PII. You declare them in `brume.yml`. `brume plan` proposes a heuristic list but it is not exhaustive.

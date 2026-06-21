@@ -1,13 +1,17 @@
 ---
 title: Merge mode
 description: Run mode that merges pseudonymized data into an existing target instead of overwriting it (upsert / delta).
+roadmap:
+  group: Engine
+  status: Planned
+  order: 1
 ---
 
 **Status:** Planned · **Priority:** 5
 
 ## What
 
-A new execution mode that **merges** pseudonymized data into an existing target database — instead of dropping and recreating tables, perform an `UPSERT` on PKs and apply a delta.
+A new execution mode that **merges** pseudonymized data into an existing target database. Instead of dropping and recreating tables, perform an `UPSERT` on PKs and apply a delta.
 
 ## Why it matters
 

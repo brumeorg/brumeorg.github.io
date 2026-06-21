@@ -1,6 +1,10 @@
 ---
 title: Other databases
 description: Extend Brume beyond PostgreSQL — MySQL, SQL Server, MongoDB.
+roadmap:
+  group: Engine
+  status: Exploration
+  order: 2
 ---
 
 **Status:** Exploration · **Priority:** 6
