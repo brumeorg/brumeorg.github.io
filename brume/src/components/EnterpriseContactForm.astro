@@ -1,0 +1,92 @@
+---
+const recipient = 'brume.org@gmail.com';
+---
+
+<form class="brume-form" id="brume-enterprise-form" data-recipient={recipient}>
+	<div class="brume-form-grid">
+		<label class="brume-form-field">
+			<span>Your name</span>
+			<input name="name" type="text" required autocomplete="name" placeholder="Jane Doe" />
+		</label>
+		<label class="brume-form-field">
+			<span>Work email</span>
+			<input name="email" type="email" required autocomplete="email" placeholder="jane@acme.com" />
+		</label>
+		<label class="brume-form-field">
+			<span>Company</span>
+			<input name="company" type="text" required autocomplete="organization" placeholder="Acme Inc." />
+		</label>
+		<label class="brume-form-field">
+			<span>Team size</span>
+			<select name="team_size">
+				<option value="">Select…</option>
+				<option value="1–10">1–10</option>
+				<option value="11–50">11–50</option>
+				<option value="51–200">51–200</option>
+				<option value="200+">200+</option>
+			</select>
+		</label>
+	</div>
+	<label class="brume-form-field brume-form-field-wide">
+		<span>What you need</span>
+		<textarea
+			name="message"
+			rows="4"
+			required
+			placeholder="Compliance scope, data volume, timeline, anything we should know…"
+		></textarea>
+	</label>
+	<div class="brume-form-actions">
+		<button type="submit" class="brume-btn brume-btn-primary">
+			Open in mail
+			<svg class="brume-btn-arrow" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+				<path
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M3 8h10M9 4l4 4-4 4"
+				></path>
+			</svg>
+		</button>
+		<p class="brume-form-note">
+			Submitting opens your mail client pre-filled. Or write us directly at
+			<a href={`mailto:${recipient}`}>{recipient}</a>.
+		</p>
+	</div>
+</form>
+
+<script is:inline>
+	(function () {
+		var form = document.getElementById('brume-enterprise-form');
+		if (!form) return;
+		form.addEventListener('submit', function (e) {
+			e.preventDefault();
+			var data = new FormData(form);
+			var to = form.getAttribute('data-recipient');
+			var company = (data.get('company') || '').toString().trim();
+			var name = (data.get('name') || '').toString().trim();
+			var subject = 'Brume Enterprise — ' + (company || 'inquiry');
+			var lines = [
+				'Name:     ' + name,
+				'Email:    ' + (data.get('email') || ''),
+				'Company:  ' + company,
+				'Team:     ' + (data.get('team_size') || ''),
+				'',
+				(data.get('message') || '').toString(),
+				'',
+				'—',
+				'Sent via brumeorg.github.io/enterprise',
+			];
+			var url =
+				'mailto:' +
+				to +
+				'?subject=' +
+				encodeURIComponent(subject) +
+				'&body=' +
+				encodeURIComponent(lines.join('\n'));
+			window.location.href = url;
+		});
+	})();
+</script>

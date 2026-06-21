@@ -1,0 +1,53 @@
+---
+const href = '/docs/getting-started/';
+const { pathname } = Astro.url;
+const isActive = pathname.startsWith(href);
+---
+
+<a class:list={['quickstart-btn', { active: isActive }]} {href}>
+	<span>Quickstart</span>
+	<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+		<path
+			fill="none"
+			stroke="currentColor"
+			stroke-width="1.6"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			d="M3 8h10M9 4l4 4-4 4"
+		></path>
+	</svg>
+</a>
+
+<style>
+	.quickstart-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.4rem 0.9rem;
+		border-radius: 999px;
+		background: var(--brume-sage);
+		color: #14181d;
+		font-family: 'Be Vietnam Pro', sans-serif;
+		font-size: var(--sl-text-sm);
+		font-weight: 500;
+		text-decoration: none;
+		line-height: 1;
+		transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+		box-shadow: 0 0 0 1px var(--brume-sage), 0 8px 20px -10px var(--brume-sage-glow);
+	}
+	.quickstart-btn:hover {
+		transform: translateY(-1px);
+		background: var(--brume-sage-soft);
+		box-shadow: 0 0 0 1px var(--brume-sage), 0 10px 28px -10px var(--brume-sage-glow);
+	}
+	.quickstart-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 1px var(--brume-sage), 0 0 0 4px var(--brume-sage-glow);
+	}
+	.quickstart-btn svg {
+		transition: transform 0.15s ease;
+	}
+	.quickstart-btn:hover svg {
+		transform: translateX(2px);
+	}
+</style>

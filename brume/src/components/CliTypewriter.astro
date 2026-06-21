@@ -1,0 +1,45 @@
+---
+const words = ['plan', 'execute', 'audit', 'dry-run'];
+const wordsJson = JSON.stringify(words);
+---
+
+<script is:inline data-words={wordsJson} id="brume-cli-typewriter-script">
+	(function () {
+		var el = document.getElementById('brume-cli-cmd');
+		if (!el) return;
+		var scriptEl = document.getElementById('brume-cli-typewriter-script');
+		var words = JSON.parse(scriptEl.getAttribute('data-words'));
+		var typeSpeed = 95;
+		var eraseSpeed = 55;
+		var holdMs = 1600;
+		var idx = 0;
+
+		if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			el.textContent = words[0];
+			return;
+		}
+
+		function type(word, i) {
+			el.textContent = word.slice(0, i);
+			if (i < word.length) {
+				setTimeout(function () { type(word, i + 1); }, typeSpeed);
+			} else {
+				setTimeout(function () { erase(word.length); }, holdMs);
+			}
+		}
+
+		function erase(i) {
+			var current = words[idx];
+			el.textContent = current.slice(0, i);
+			if (i > 0) {
+				setTimeout(function () { erase(i - 1); }, eraseSpeed);
+			} else {
+				idx = (idx + 1) % words.length;
+				type(words[idx], 1);
+			}
+		}
+
+		el.textContent = '';
+		type(words[0], 1);
+	})();
+</script>

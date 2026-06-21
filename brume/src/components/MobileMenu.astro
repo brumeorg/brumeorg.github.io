@@ -1,0 +1,67 @@
+---
+// Overrides the Search slot to render a hamburger button on mobile.
+// On desktop the button is hidden via CSS. Clicking it toggles
+// `data-mobile-menu="open"` on <html>, which the CSS uses to reveal
+// the `.right-group` (tabs + GitHub + theme + Quickstart) as a drawer.
+---
+
+<button
+	type="button"
+	class="brume-mobile-menu-btn"
+	id="brume-mobile-menu-btn"
+	aria-label="Open menu"
+	aria-expanded="false"
+>
+	<svg viewBox="0 0 22 22" width="22" height="22" aria-hidden="true">
+		<path class="line line-1" d="M3 6h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+		<path class="line line-2" d="M3 11h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+		<path class="line line-3" d="M3 16h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+	</svg>
+</button>
+
+<script is:inline>
+	(function () {
+		var btn = document.getElementById('brume-mobile-menu-btn');
+		if (!btn) return;
+		var html = document.documentElement;
+
+		function setOpen(open) {
+			html.setAttribute('data-mobile-menu', open ? 'open' : 'closed');
+			btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+			btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+		}
+
+		setOpen(false);
+
+		btn.addEventListener('click', function (e) {
+			e.stopPropagation();
+			var isOpen = html.getAttribute('data-mobile-menu') === 'open';
+			setOpen(!isOpen);
+		});
+
+		// Close when a link inside the right-group is clicked (navigation)
+		document.addEventListener('click', function (e) {
+			var t = e.target;
+			if (!t || !t.closest) return;
+			if (t.closest('.right-group a')) {
+				setOpen(false);
+			} else if (
+				html.getAttribute('data-mobile-menu') === 'open' &&
+				!t.closest('.right-group') &&
+				!t.closest('#brume-mobile-menu-btn')
+			) {
+				setOpen(false);
+			}
+		});
+
+		// Escape closes
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape') setOpen(false);
+		});
+
+		// Resize to desktop closes
+		window.addEventListener('resize', function () {
+			if (window.matchMedia('(min-width: 50rem)').matches) setOpen(false);
+		});
+	})();
+</script>

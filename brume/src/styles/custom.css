@@ -1,0 +1,1289 @@
+@import url('https://fonts.googleapis.com/css2?family=Asap+Condensed:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@300;400;500&display=swap');
+
+:root {
+	--brume-sage:           #8eb085;
+	--brume-sage-soft:      #a8c4a0;
+	--brume-sage-strong:    #6f9466;
+	--brume-sage-tint:      rgba(142, 176, 133, 0.14);
+	--brume-sage-tint-soft: rgba(142, 176, 133, 0.07);
+	--brume-sage-glow:      rgba(142, 176, 133, 0.35);
+	--brume-hairline:       rgba(255, 255, 255, 0.06);
+
+	/* Realign Starlight's accent vars on the sage palette */
+	--sl-color-text-accent: var(--brume-sage);
+	--sl-color-accent:      var(--brume-sage);
+	--sl-color-accent-low:  var(--brume-sage-tint);
+	--sl-color-accent-high: var(--brume-sage-strong);
+
+	/* Unifier toutes les bordures fines */
+	--sl-color-hairline:        var(--brume-hairline);
+	--sl-color-hairline-light:  var(--brume-hairline);
+	--sl-color-hairline-shade:  var(--brume-hairline);
+}
+
+/* Variante light theme : hairline plus sombre */
+[data-theme='light'] {
+	--brume-hairline:       rgba(0, 0, 0, 0.08);
+	--sl-color-hairline:        var(--brume-hairline);
+	--sl-color-hairline-light:  var(--brume-hairline);
+	--sl-color-hairline-shade:  var(--brume-hairline);
+}
+
+/* ============================================================
+   Atmospheric fog — landing page only
+   Cool grey base + slow-drifting sage-tinted blobs.
+   Layered behind the content via z-index in a body stacking context.
+   ============================================================ */
+
+body {
+	isolation: isolate;
+}
+
+body:has(.hero) {
+	background:
+		radial-gradient(ellipse 80% 50% at 50% 0%, rgba(142, 176, 133, 0.05), transparent 60%),
+		linear-gradient(180deg, var(--sl-color-bg) 0%, var(--sl-color-bg-nav) 100%);
+	/* Le terminal s'étire au-delà du padding du content-panel (×1.5). On évite
+	   une scrollbar horizontale en clippant le débordement. */
+	overflow-x: clip;
+}
+
+body:has(.hero)::before,
+body:has(.hero)::after {
+	content: '';
+	position: fixed;
+	pointer-events: none;
+	z-index: -1;
+	border-radius: 50%;
+	filter: blur(60px);
+	will-change: transform;
+}
+
+body:has(.hero)::before {
+	top: -25%;
+	left: -20%;
+	width: 75vmax;
+	height: 75vmax;
+	background: radial-gradient(circle, rgba(142, 176, 133, 0.16), transparent 60%);
+	animation: brumeFogA 48s ease-in-out infinite;
+}
+
+body:has(.hero)::after {
+	bottom: -30%;
+	right: -25%;
+	width: 80vmax;
+	height: 80vmax;
+	background: radial-gradient(circle, rgba(168, 184, 197, 0.12), transparent 60%);
+	animation: brumeFogB 64s ease-in-out infinite;
+}
+
+@keyframes brumeFogA {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+	50%      { transform: translate3d(8vw, 4vh, 0) scale(1.08); }
+}
+
+@keyframes brumeFogB {
+	0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+	50%      { transform: translate3d(-6vw, -3vh, 0) scale(1.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body:has(.hero)::before,
+	body:has(.hero)::after {
+		animation: none !important;
+	}
+}
+
+.site-title img {
+	max-height: 3.5rem;
+}
+
+.hero [data-page-title] {
+	font-family: 'Asap Condensed', sans-serif;
+	font-weight: 500;
+	letter-spacing: -0.01em;
+	line-height: 0.95;
+}
+
+/* CLI typewriter title — brume <cmd>
+   min-width fige la min-content sur "brume dry-run" (13 ch) — sans ça,
+   la colonne gauche se redimensionne selon le mot tapé et pousse la
+   tagline + le terminal. */
+.brume-cli {
+	font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-weight: 600;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	display: inline-block;
+	min-width: 13.5ch;
+	text-align: left;
+}
+
+.brume-cli-prompt {
+	color: var(--sl-color-white);
+	opacity: 0.55;
+}
+
+.brume-cli-cmd {
+	color: var(--brume-sage);
+	text-shadow: 0 0 18px var(--brume-sage-glow);
+}
+
+/* Curseur terminal qui clignote à la fin du titre */
+.brume-caret {
+	display: inline-block;
+	width: 0.08em;
+	height: 0.78em;
+	margin-left: 0.12em;
+	background: var(--brume-sage);
+	vertical-align: -0.05em;
+	border-radius: 1px;
+	box-shadow: 0 0 8px var(--brume-sage-glow);
+	animation: brumeCaret 1.05s steps(2) infinite;
+}
+
+@keyframes brumeCaret {
+	50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.brume-caret {
+		animation: none;
+		opacity: 1;
+	}
+}
+
+/* Hero actions (Starlight LinkButton rendu via hero.actions) */
+.hero .actions {
+	margin-top: 0.5rem;
+}
+
+.hero .actions .sl-link-button.minimal {
+	color: var(--brume-sage);
+	padding: 0.4rem 0.25rem;
+	font-weight: 500;
+	gap: 0.4rem;
+	transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.hero .actions .sl-link-button.minimal:hover {
+	color: var(--brume-sage-soft);
+}
+
+.hero .actions .sl-link-button.minimal svg {
+	transition: transform 0.15s ease;
+}
+
+.hero .actions .sl-link-button.minimal:hover svg {
+	transform: translateX(3px);
+}
+
+header.header {
+	background-color: transparent;
+	border-bottom: none;
+	box-shadow: none;
+	position: relative;
+	padding-inline: max(15%, calc((100% - 1200px) / 2));
+}
+
+/* Floating pill: groupe Tabs + GitHub + Theme + Quickstart en haut à droite */
+header.header .right-group {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid var(--brume-hairline);
+	border-radius: 999px;
+	padding: 0.35rem 0.45rem 0.35rem 0.6rem;
+	backdrop-filter: blur(10px) saturate(140%);
+	-webkit-backdrop-filter: blur(10px) saturate(140%);
+	box-shadow: 0 8px 30px -16px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='light'] header.header .right-group {
+	background: rgba(255, 255, 255, 0.7);
+}
+
+/* Tuer le séparateur par défaut entre social-icons et theme */
+header.header .social-icons::after {
+	display: none !important;
+	border: none !important;
+}
+
+main > .content-panel:first-of-type:has(.hero) {
+	padding-top: 0;
+	margin-top: -2rem;
+	position: relative;
+	padding-inline: max(15%, calc((100% - 1200px) / 2));
+}
+
+main > .content-panel:first-of-type:has(.hero)::after {
+	content: '';
+	position: absolute;
+	bottom: 4rem;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 70%;
+	max-width: 1200px;
+	height: 1px;
+	background-color: var(--sl-color-gray-5);
+}
+
+.hero [data-page-title] .hero-accent {
+	color: var(--brume-sage);
+}
+
+.hero-video {
+	width: 100%;
+	height: auto;
+	object-fit: contain;
+}
+
+/* Right hero column = terminal — fills the column, aligned with navbar pill */
+@media (min-width: 50rem) {
+	body:has(.hero) .hero {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+		gap: 3%;
+	}
+	body:has(.hero) .hero > .hero-html {
+		width: 100%;
+		margin-inline: 0;
+	}
+	/* Empêche la colonne de gauche de gonfler avec le contenu CLI */
+	body:has(.hero) .hero > .stack {
+		min-width: 0;
+	}
+}
+
+/* ============================================================
+   Terminal (right column install card)
+   ============================================================ */
+.brume-terminal {
+	width: 100%;
+	flex: 1 1 auto;
+	align-self: stretch;
+	border-radius: 12px;
+	overflow: hidden;
+	background: rgba(8, 12, 16, 0.55);
+	border: 1px solid var(--brume-hairline);
+	box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+[data-theme='light'] .brume-terminal {
+	background: rgba(20, 24, 29, 0.92);
+}
+
+.brume-terminal-bar {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.55rem 0.75rem;
+	border-bottom: 1px solid var(--brume-hairline);
+	background: rgba(0, 0, 0, 0.25);
+}
+
+.brume-terminal-dot {
+	width: 11px;
+	height: 11px;
+	border-radius: 50%;
+	display: inline-block;
+	flex: 0 0 auto;
+	opacity: 0.85;
+}
+
+.brume-terminal-dot-red    { background: #ff5f57; }
+.brume-terminal-dot-yellow { background: #febc2e; }
+.brume-terminal-dot-green  { background: #28c840; }
+
+.brume-terminal-title {
+	margin-left: auto;
+	font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 0.72rem;
+	color: rgba(255, 255, 255, 0.45);
+	letter-spacing: 0.04em;
+	text-transform: lowercase;
+}
+
+.brume-terminal-body {
+	padding: 0.9rem 1rem 1.1rem;
+}
+
+.brume-terminal-block {
+	display: flex;
+	flex-direction: column;
+	gap: 0.05rem;
+}
+
+.brume-terminal-line {
+	font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 0.78rem;
+	line-height: 1.65;
+	color: rgba(255, 255, 255, 0.92);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.brume-terminal-line.c {
+	color: rgba(255, 255, 255, 0.38);
+}
+
+.brume-terminal-line .p {
+	color: var(--brume-sage);
+	margin-right: 0.55em;
+	font-weight: 600;
+	user-select: none;
+}
+
+.brume-terminal-line.indent {
+	padding-left: 1.5em;
+	color: rgba(255, 255, 255, 0.78);
+}
+
+.brume-terminal-spacer {
+	height: 0.65rem;
+}
+
+.brume-terminal-cursor {
+	display: inline-block;
+	width: 0.55em;
+	height: 1em;
+	background: var(--brume-sage);
+	vertical-align: -0.12em;
+	margin-left: 0.2em;
+	border-radius: 1px;
+	opacity: 0.8;
+	box-shadow: 0 0 8px var(--brume-sage-glow);
+	animation: brumeTermCursor 1.05s steps(2) infinite;
+}
+
+@keyframes brumeTermCursor {
+	50% { opacity: 0; }
+}
+
+.brume-hidden {
+	display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.brume-terminal-cursor {
+		animation: none;
+		opacity: 0.8;
+	}
+}
+
+/* Brackets de cadrage HUD — réutilisables (CTA) */
+.brume-corner {
+	position: absolute;
+	width: 14px;
+	height: 14px;
+	border-color: var(--brume-sage);
+	border-style: solid;
+	border-width: 0;
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+.brume-corner-tl { top: 10px;    left: 10px;    border-top-width: 1px;    border-left-width: 1px; }
+.brume-corner-tr { top: 10px;    right: 10px;   border-top-width: 1px;    border-right-width: 1px; }
+.brume-corner-bl { bottom: 10px; left: 10px;    border-bottom-width: 1px; border-left-width: 1px; }
+.brume-corner-br { bottom: 10px; right: 10px;   border-bottom-width: 1px; border-right-width: 1px; }
+
+.brume-bracketed {
+	position: relative;
+	padding: 1rem 1.25rem;
+}
+
+.brume-bracketed-inline {
+	display: inline-block;
+}
+
+.brume-bracketed .brume-corner {
+	opacity: 0.45;
+	width: 12px;
+	height: 12px;
+	top: 4px;
+	bottom: 4px;
+}
+
+.brume-bracketed .brume-corner-tl { top: 4px;    left: 4px;    bottom: auto; right: auto; }
+.brume-bracketed .brume-corner-tr { top: 4px;    right: 4px;   bottom: auto; left: auto;  }
+.brume-bracketed .brume-corner-bl { bottom: 4px; left: 4px;    top: auto;    right: auto; }
+.brume-bracketed .brume-corner-br { bottom: 4px; right: 4px;   top: auto;    left: auto;  }
+
+.brume-hash-anim {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 1.25rem;
+	padding: 2rem 1rem;
+	min-height: 18rem;
+    margin-top: -5rem;
+}
+
+.brume-hash-field {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.35rem;
+	width: 100%;
+}
+
+.brume-hash-label {
+	font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 0.7rem;
+	color: var(--sl-color-gray-4);
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+}
+
+.brume-hash-row {
+	position: relative;
+	width: 100%;
+	height: 4.5rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.brume-hash-row-sm {
+	height: 3rem;
+}
+
+.brume-hash-text {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: clamp(1.5rem, 3.8vw, 2.5rem);
+	font-weight: 600;
+	white-space: nowrap;
+	letter-spacing: 0.02em;
+	opacity: 0;
+	will-change: opacity, transform, filter;
+}
+
+.brume-hash-text-sm {
+	font-size: clamp(1.1rem, 2.6vw, 1.6rem);
+	font-weight: 500;
+	letter-spacing: 0.06em;
+}
+
+.brume-hash-from,
+.brume-hash-to {
+	color: var(--sl-color-white);
+}
+
+.brume-hash-h {
+	color: var(--brume-sage);
+	text-shadow: 0 0 14px var(--brume-sage-glow);
+}
+
+.brume-hash-from { animation: bhFrom 7s ease-in-out infinite; }
+.brume-hash-to   { animation: bhTo   7s ease-in-out infinite; }
+
+@keyframes bhFrom {
+	0%, 18% {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+		filter: blur(0);
+	}
+	26% {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.96);
+		filter: blur(4px);
+	}
+	95%, 100% { opacity: 0; }
+}
+
+@keyframes bhTo {
+	0%, 62% {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.96);
+		filter: blur(4px);
+	}
+	72%, 94% {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+		filter: blur(0);
+	}
+	100% { opacity: 0; }
+}
+
+.bh1 { animation: bh1 7s steps(1) infinite; }
+.bh2 { animation: bh2 7s steps(1) infinite; }
+.bh3 { animation: bh3 7s steps(1) infinite; }
+.bh4 { animation: bh4 7s steps(1) infinite; }
+.bh5 { animation: bh5 7s steps(1) infinite; }
+.bh6 { animation: bh6 7s steps(1) infinite; }
+.bh7 { animation: bh7 7s steps(1) infinite; }
+.bh8 { animation: bh8 7s steps(1) infinite; }
+
+@keyframes bh1 { 0%, 22% { opacity: 0; } 23%, 26% { opacity: 1; } 27%, 100% { opacity: 0; } }
+@keyframes bh2 { 0%, 27% { opacity: 0; } 28%, 31% { opacity: 1; } 32%, 100% { opacity: 0; } }
+@keyframes bh3 { 0%, 32% { opacity: 0; } 33%, 36% { opacity: 1; } 37%, 100% { opacity: 0; } }
+@keyframes bh4 { 0%, 37% { opacity: 0; } 38%, 41% { opacity: 1; } 42%, 100% { opacity: 0; } }
+@keyframes bh5 { 0%, 42% { opacity: 0; } 43%, 46% { opacity: 1; } 47%, 100% { opacity: 0; } }
+@keyframes bh6 { 0%, 47% { opacity: 0; } 48%, 51% { opacity: 1; } 52%, 100% { opacity: 0; } }
+@keyframes bh7 { 0%, 52% { opacity: 0; } 53%, 56% { opacity: 1; } 57%, 100% { opacity: 0; } }
+@keyframes bh8 { 0%, 57% { opacity: 0; } 58%, 61% { opacity: 1; } 62%, 100% { opacity: 0; } }
+
+.brume-hash-status {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 0.8rem;
+	color: var(--sl-color-gray-3);
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	opacity: 0;
+	animation: bhStatus 7s ease-in-out infinite;
+}
+
+.brume-hash-status-label::after {
+	content: '…';
+	display: inline-block;
+	margin-left: 0.15rem;
+}
+
+.brume-hash-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--brume-sage);
+	opacity: 0.3;
+	animation: bhDot 1.05s ease-in-out infinite;
+}
+
+.brume-hash-dot:nth-child(2) { animation-delay: 0.15s; }
+.brume-hash-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes bhDot {
+	0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+	40%           { opacity: 1;    transform: scale(1.1);  }
+}
+
+@keyframes bhStatus {
+	0%, 18%   { opacity: 0; }
+	24%, 60%  { opacity: 0.9; }
+	68%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.brume-hash-anim *,
+	.brume-hash-anim *::before,
+	.brume-hash-anim *::after {
+		animation: none !important;
+	}
+	.brume-hash-from { opacity: 1; }
+	.brume-hash-to,
+	.brume-hash-h,
+	.brume-hash-status { opacity: 0; }
+}
+
+.brume-cta {
+	width: 100%;
+	max-width: 1200px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.brume-cta-top {
+	margin-top: 2.5rem;
+	margin-bottom: 1rem;
+}
+
+.brume-cta-bottom {
+	margin-top: 2.5rem;
+	padding-bottom: 1rem;
+}
+
+.brume-cta-tease {
+	margin: 0;
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-weight: 300;
+	font-style: italic;
+	color: var(--sl-color-gray-3);
+	font-size: 1rem;
+}
+
+.brume-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.75rem 1.75rem;
+	border-radius: 999px;
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-weight: 400;
+	font-size: 0.95rem;
+	letter-spacing: 0.01em;
+	text-decoration: none;
+	transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.brume-btn:hover {
+	transform: translateY(-1px);
+}
+
+.brume-btn-primary {
+	gap: 0.5rem;
+	background: var(--brume-sage);
+	color: #14181d;
+	font-weight: 500;
+	box-shadow:
+		0 0 0 1px var(--brume-sage),
+		0 10px 28px -10px var(--brume-sage-glow),
+		0 20px 60px -20px rgba(0, 0, 0, 0.4);
+}
+
+.brume-btn-arrow {
+	transition: transform 0.2s ease;
+}
+
+.brume-btn-primary:hover .brume-btn-arrow {
+	transform: translateX(3px);
+}
+
+.brume-btn-primary:hover {
+	background: var(--brume-sage-soft);
+	box-shadow:
+		0 0 0 1px var(--brume-sage),
+		0 14px 36px -10px var(--brume-sage-glow),
+		0 26px 70px -20px rgba(0, 0, 0, 0.5);
+}
+
+.brume-btn-primary:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 1px var(--brume-sage),
+		0 0 0 4px var(--brume-sage-glow),
+		0 14px 36px -10px var(--brume-sage-glow);
+}
+
+.brume-btn-secondary {
+	background: transparent;
+	color: var(--sl-color-white);
+	border: 1px solid var(--sl-color-gray-5);
+}
+
+.brume-btn-secondary:hover {
+	border-color: var(--brume-sage);
+	color: var(--brume-sage);
+}
+
+.brume-features {
+	list-style: none;
+	padding: 0;
+	margin: 1rem auto 0;
+	width: 100%;
+	max-width: 1200px;
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+}
+
+.brume-feature {
+	display: flex;
+	align-items: center;
+	gap: 1.5rem;
+	padding: 1.25rem 1rem;
+	border-bottom: 1px solid var(--sl-color-gray-5);
+}
+
+.brume-feature:last-child {
+	border-bottom: none;
+}
+
+.brume-feature-icon {
+	flex: 0 0 auto;
+	width: 5.5rem;
+	height: 5.5rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.brume-feature-video {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+.brume-feature-body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.brume-feature-body h3 {
+	margin: 0 0 0.35rem;
+	font-family: 'Asap Condensed', sans-serif;
+	font-weight: 500;
+	font-size: 1.25rem;
+	letter-spacing: -0.01em;
+	color: var(--sl-color-white);
+}
+
+.brume-feature-body p {
+	margin: 0;
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-weight: 300;
+	color: var(--sl-color-gray-2);
+	font-size: 0.95rem;
+	line-height: 1.55;
+}
+
+/* Default desktop: short summary hidden, long detail visible */
+.brume-feature-summary { display: none; }
+.brume-feature-detail  { display: block; }
+
+.brume-feature-summary code {
+	font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+	font-size: 0.88em;
+	padding: 0.05em 0.3em;
+	border-radius: 4px;
+	background: var(--brume-sage-tint);
+	color: var(--brume-sage);
+}
+
+@media (max-width: 640px) {
+	.brume-feature {
+		gap: 1rem;
+		padding: 1rem 0.5rem;
+	}
+	.brume-feature-icon {
+		width: 4rem;
+		height: 4rem;
+	}
+	/* Mobile : short summary remplace la description longue */
+	.brume-feature-summary { display: block; }
+	.brume-feature-detail  { display: none; }
+}
+
+/* ============================================================
+   Mobile hamburger menu — affiche la pill nav en drawer < 50rem
+   ============================================================ */
+.brume-mobile-menu-btn {
+	display: none; /* hidden on desktop, shown by media query below */
+	align-items: center;
+	justify-content: center;
+	margin-left: auto;
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid var(--brume-hairline);
+	border-radius: 999px;
+	color: var(--sl-color-gray-2);
+	padding: 0.5rem;
+	cursor: pointer;
+	transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+.brume-mobile-menu-btn:hover,
+.brume-mobile-menu-btn:focus-visible {
+	color: var(--sl-color-white);
+	border-color: var(--brume-sage);
+	outline: none;
+}
+
+.brume-mobile-menu-btn .line {
+	transition: transform 0.2s ease, opacity 0.15s ease;
+	transform-origin: center;
+}
+
+[data-mobile-menu='open'] .brume-mobile-menu-btn .line-1 {
+	transform: translateY(5px) rotate(45deg);
+}
+[data-mobile-menu='open'] .brume-mobile-menu-btn .line-2 {
+	opacity: 0;
+}
+[data-mobile-menu='open'] .brume-mobile-menu-btn .line-3 {
+	transform: translateY(-5px) rotate(-45deg);
+}
+
+@media (max-width: 50rem) {
+	.brume-mobile-menu-btn {
+		display: inline-flex;
+	}
+
+	/* La pill nav s'affiche en drawer lorsqu'on ouvre le menu. */
+	[data-mobile-menu='open'] header.header .right-group {
+		display: flex !important;
+		position: fixed;
+		top: calc(var(--sl-nav-height) + 0.5rem);
+		right: 0.75rem;
+		left: 0.75rem;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0.35rem;
+		padding: 1rem;
+		border-radius: 14px;
+		background: rgba(20, 24, 29, 0.92);
+		border: 1px solid var(--brume-hairline);
+		box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.6);
+		backdrop-filter: blur(16px) saturate(140%);
+		-webkit-backdrop-filter: blur(16px) saturate(140%);
+		z-index: 100;
+	}
+
+	[data-theme='light'] [data-mobile-menu='open'] header.header .right-group {
+		background: rgba(255, 255, 255, 0.95);
+	}
+
+	/* HeaderTabs s'empile verticalement dans le drawer */
+	[data-mobile-menu='open'] header.header .social-icons {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0;
+	}
+	[data-mobile-menu='open'] .header-tabs {
+		flex-direction: column;
+		gap: 0.15rem;
+		align-items: stretch;
+		width: 100%;
+	}
+	[data-mobile-menu='open'] .header-tabs a {
+		padding: 0.65rem 1rem;
+		font-size: 0.95rem;
+	}
+	[data-mobile-menu='open'] .header-tabs a.active::after {
+		left: 0.75rem;
+		bottom: 50%;
+		transform: translateY(50%);
+		width: 2px;
+		height: 16px;
+	}
+	[data-mobile-menu='open'] .header-tabs .github-link {
+		justify-content: flex-start;
+		gap: 0.6rem;
+		padding: 0.65rem 1rem;
+		margin-left: 0;
+	}
+	[data-mobile-menu='open'] .header-tabs .github-link::after {
+		content: 'GitHub';
+		font-size: 0.95rem;
+		font-weight: 500;
+	}
+
+	/* Theme toggle + Quickstart en bloc plein dans le drawer */
+	[data-mobile-menu='open'] .theme-toggle {
+		justify-content: flex-start;
+		gap: 0.6rem;
+		padding: 0.65rem 1rem;
+	}
+	[data-mobile-menu='open'] .theme-toggle::after {
+		content: 'Theme';
+		font-size: 0.95rem;
+		font-weight: 500;
+	}
+	[data-mobile-menu='open'] .quickstart-btn {
+		justify-content: center;
+		padding: 0.75rem 1rem;
+		margin-top: 0.35rem;
+	}
+}
+
+/* ============================================================
+   Landing responsive — < 50rem (mobile/tablet)
+   ============================================================ */
+@media (max-width: 50rem) {
+	/* Le terminal disparaît sur mobile (illisible à cette largeur) */
+	body:has(.hero) .hero > .hero-html {
+		display: none !important;
+	}
+
+	/* Hero recadré : padding vertical réduit, contenu centré */
+	body:has(.hero) main > .content-panel:first-of-type:has(.hero) {
+		padding-inline: 1.25rem;
+	}
+
+	/* CTA principal légèrement plus compact */
+	.brume-cta-top {
+		margin-top: 1.5rem;
+	}
+	.brume-btn-primary {
+		padding: 0.7rem 1.4rem;
+		font-size: 0.95rem;
+	}
+
+	/* Le séparateur sous le hero remonte (plus de terminal qui descend) */
+	body:has(.hero) main > .content-panel:first-of-type:has(.hero)::after {
+		bottom: 2rem;
+	}
+
+	/* Carte CTA bottom + features container : padding latéral */
+	.brume-features,
+	.brume-cta {
+		padding-inline: 0.5rem;
+	}
+}
+
+/* ============================================================
+   Enterprise page (features grid + mailto form)
+   ============================================================ */
+.brume-enterprise-section {
+	max-width: 1100px;
+	margin: 3rem auto;
+	padding: 0 1rem;
+}
+
+.brume-enterprise-eyebrow {
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-size: 0.75rem !important;
+	font-weight: 600 !important;
+	letter-spacing: 0.15em;
+	text-transform: uppercase;
+	color: var(--sl-color-gray-3) !important;
+	margin: 0 0 1.5rem !important;
+	text-align: center;
+}
+
+.brume-enterprise-features {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 1rem;
+}
+
+.brume-enterprise-features li {
+	padding: 1.25rem;
+	border: 1px solid var(--brume-hairline);
+	border-radius: 14px;
+	background: rgba(255, 255, 255, 0.025);
+}
+
+.brume-enterprise-features h3 {
+	margin: 0 0 0.45rem;
+	font-family: 'Asap Condensed', sans-serif;
+	font-size: 1.2rem;
+	font-weight: 500;
+	color: var(--sl-color-white);
+}
+
+.brume-enterprise-features p {
+	margin: 0;
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-weight: 300;
+	color: var(--sl-color-gray-2);
+	font-size: 0.92rem;
+	line-height: 1.55;
+}
+
+.brume-enterprise-features code {
+	font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+	font-size: 0.85em;
+	padding: 0.05em 0.35em;
+	border-radius: 4px;
+	background: var(--brume-sage-tint);
+	color: var(--brume-sage);
+}
+
+.brume-enterprise-contact {
+	max-width: 720px;
+}
+
+.brume-enterprise-lead {
+	text-align: center;
+	color: var(--sl-color-gray-2);
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-weight: 300;
+	margin: 0 0 2rem;
+}
+
+/* ----- Form ----- */
+.brume-form {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	padding: 1.75rem;
+	border: 1px solid var(--brume-hairline);
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.02);
+	box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='light'] .brume-form {
+	background: rgba(255, 255, 255, 0.65);
+}
+
+.brume-form-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 1rem;
+}
+
+.brume-form-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.brume-form-field > span {
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-size: 0.78rem;
+	font-weight: 500;
+	color: var(--sl-color-gray-2);
+	letter-spacing: 0.02em;
+}
+
+.brume-form-field input,
+.brume-form-field select,
+.brume-form-field textarea {
+	background: rgba(0, 0, 0, 0.25);
+	border: 1px solid var(--brume-hairline);
+	border-radius: 8px;
+	padding: 0.65rem 0.85rem;
+	color: var(--sl-color-white);
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-size: 0.95rem;
+	font-weight: 300;
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+[data-theme='light'] .brume-form-field input,
+[data-theme='light'] .brume-form-field select,
+[data-theme='light'] .brume-form-field textarea {
+	background: rgba(255, 255, 255, 0.6);
+	color: #1a1d22;
+}
+
+.brume-form-field input::placeholder,
+.brume-form-field textarea::placeholder {
+	color: var(--sl-color-gray-4);
+	opacity: 0.7;
+}
+
+.brume-form-field input:focus,
+.brume-form-field select:focus,
+.brume-form-field textarea:focus {
+	outline: none;
+	border-color: var(--brume-sage);
+	box-shadow: 0 0 0 3px var(--brume-sage-tint);
+}
+
+.brume-form-field textarea {
+	resize: vertical;
+	min-height: 6rem;
+	font-family: inherit;
+}
+
+.brume-form-actions {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.75rem;
+	margin-top: 0.5rem;
+}
+
+.brume-form-note {
+	margin: 0;
+	text-align: center;
+	color: var(--sl-color-gray-3);
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-size: 0.85rem;
+	font-weight: 300;
+}
+
+.brume-form-note a {
+	color: var(--brume-sage);
+	text-decoration: none;
+	border-bottom: 1px solid var(--brume-sage-tint);
+}
+
+.brume-form-note a:hover {
+	border-bottom-color: var(--brume-sage);
+}
+
+@media (max-width: 640px) {
+	.brume-form-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.hero .tagline {
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-weight: 300;
+	font-style: normal;
+	color: var(--sl-color-white);
+	font-size: clamp(var(--sl-text-base), calc(0.125rem + 1.2vw), var(--sl-text-xl));
+	max-width: 65ch;
+}
+
+main > .content-panel:first-of-type:not(:has(.hero)) {
+	padding-top: 1rem;
+}
+
+/* Sur la home (splash avec hero) : pas de sidebar ni de TOC, full width */
+body:has(.hero) {
+	--sl-sidebar-width: 0px;
+}
+
+body:has(.hero) .sidebar-pane,
+body:has(.hero) nav.sidebar,
+body:has(.hero) .mobile-preferences {
+	display: none !important;
+}
+
+body:has(.hero) .right-sidebar,
+body:has(.hero) .right-sidebar-container,
+body:has(.hero) .right-sidebar-panel {
+	display: none !important;
+}
+
+body:has(.hero) .main-pane,
+body:has(.hero) .main-frame {
+	width: 100%;
+	max-width: 100%;
+}
+
+/* ============================================================
+   Docs layout: sidebar, TOC, header tabs
+   ============================================================ */
+
+/* Sidebar — colonne aérée, retire la bordure droite par défaut de Starlight */
+body:not(:has(.hero)) .sidebar-pane {
+	padding: 2rem 1.5rem 2rem 1.75rem;
+	border-inline-end: none !important;
+	background: transparent;
+}
+
+/* Le contenu se présente comme une carte flottante : décollée du bord
+   gauche, du dessous du header, et avec un fond/bordure discrets. */
+body:not(:has(.hero)) .sidebar-content {
+	background: rgba(255, 255, 255, 0.025);
+	border: 1px solid var(--brume-hairline);
+	border-radius: 14px;
+	padding: 1rem 0.6rem 1.25rem;
+	box-shadow:
+		0 1px 0 rgba(255, 255, 255, 0.03) inset,
+		0 18px 60px -30px rgba(0, 0, 0, 0.55);
+	backdrop-filter: blur(6px) saturate(120%);
+	-webkit-backdrop-filter: blur(6px) saturate(120%);
+}
+
+[data-theme='light'] body:not(:has(.hero)) .sidebar-content {
+	background: rgba(255, 255, 255, 0.65);
+	box-shadow:
+		0 1px 0 rgba(255, 255, 255, 0.6) inset,
+		0 18px 40px -20px rgba(40, 60, 50, 0.12);
+}
+
+
+/* Items de la sidebar — espacement vertical un peu plus aéré */
+.sidebar-content ul.top-level > li + li {
+	margin-top: 0.25rem;
+}
+
+/* Section labels (group labels) — petit chapô gris en capitales */
+.sidebar-content .group-label > span,
+.sidebar-content .large {
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-size: 0.7rem !important;
+	font-weight: 600 !important;
+	letter-spacing: 0.15em;
+	text-transform: uppercase;
+	color: var(--sl-color-gray-3) !important;
+	padding: 0.5rem 0.75rem 0.25rem;
+}
+
+/* Liens — radius cohérent, hover discret */
+.sidebar-content a {
+	border-radius: 0.5rem;
+	padding: 0.4rem 0.75rem;
+	position: relative;
+	transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-content a:hover,
+.sidebar-content a:focus-visible {
+	background-color: var(--brume-sage-tint-soft);
+	color: var(--sl-color-white);
+	outline: none;
+}
+
+.sidebar-content a:focus-visible {
+	box-shadow: 0 0 0 2px var(--brume-sage-glow);
+}
+
+/* État actif — tint léger + barre d'accent à gauche, pas de bloc plein */
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover,
+.sidebar-content a[aria-current='page']:focus {
+	background-color: var(--brume-sage-tint) !important;
+	color: var(--brume-sage) !important;
+	font-weight: 600;
+}
+
+.sidebar-content a[aria-current='page']::before {
+	content: '';
+	position: absolute;
+	left: -0.25rem;
+	top: 0.4rem;
+	bottom: 0.4rem;
+	width: 3px;
+	border-radius: 2px;
+	background-color: var(--brume-sage);
+}
+
+/* TOC — Retire la barre verticale Starlight qui montait à travers la navbar
+   (le border-inline-start est posé sur .right-sidebar en position:fixed top:0). */
+body:not(:has(.hero)) .right-sidebar {
+	border-inline-start: none !important;
+}
+
+/* TOC — aéré, mais reste intégré à la page (pas de carte). */
+body:not(:has(.hero)) .right-sidebar-panel {
+	padding: 2rem 1.75rem 2rem 1.75rem;
+}
+
+body:not(:has(.hero)) .right-sidebar-panel h2 {
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-size: 0.7rem !important;
+	font-weight: 600 !important;
+	letter-spacing: 0.15em;
+	text-transform: uppercase;
+	color: var(--sl-color-gray-3) !important;
+	margin-bottom: 0.85rem !important;
+}
+
+/* TOC — même grammaire pour l'item actif */
+.right-sidebar-panel a {
+	border-radius: 0.4rem;
+	padding: 0.3rem 0.5rem;
+	transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.right-sidebar-panel a:hover {
+	color: var(--sl-color-white);
+	background-color: var(--brume-sage-tint-soft);
+}
+
+.right-sidebar-panel a[aria-current='true'] {
+	position: relative;
+	color: var(--brume-sage) !important;
+	background-color: var(--brume-sage-tint) !important;
+	font-weight: 600;
+}
+
+.right-sidebar-panel a[aria-current='true']::before {
+	content: '';
+	position: absolute;
+	left: -0.5rem;
+	top: 0.25rem;
+	bottom: 0.25rem;
+	width: 3px;
+	border-radius: 2px;
+	background-color: var(--brume-sage);
+}
+
+/* Unifier les bordures fines */
+.sidebar-pane,
+.right-sidebar {
+	border-color: var(--brume-hairline) !important;
+}
+
+/* Adoucir la ligne sous le H1 de doc */
+.content-panel + .content-panel {
+	border-top-color: var(--brume-hairline) !important;
+}

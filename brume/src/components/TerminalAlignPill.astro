@@ -1,0 +1,45 @@
+---
+// Aligne le bord gauche et droit du terminal sur la bulle de navbar (.right-group).
+// Mesuré au runtime parce que la largeur de la pill dépend du contenu et de la police.
+---
+
+<script is:inline>
+	(function () {
+		var pill = document.querySelector('header.header .right-group');
+		var heroHtml = document.querySelector('.hero > .hero-html');
+		if (!pill || !heroHtml) return;
+
+		var mq = window.matchMedia('(min-width: 50rem)');
+
+		function sync() {
+			if (!mq.matches) {
+				heroHtml.style.removeProperty('width');
+				heroHtml.style.removeProperty('margin-left');
+				heroHtml.style.removeProperty('margin-right');
+				return;
+			}
+			var w = pill.getBoundingClientRect().width;
+			var stretch = 1.0;          // ← right-edge multiplier (1 = ends at pill right)
+			var leftInsetRatio = 0.3;   // ← left edge pulled inward, in pill-widths
+			var leftInset = w * leftInsetRatio;
+			var newWidth = w * stretch - leftInset;
+			heroHtml.style.width = newWidth + 'px';
+			heroHtml.style.marginLeft = 'auto';
+			// Negative margin-right makes the layout still count the box as pill_width,
+			// so margin-left:auto anchors the right edge at the pill. Width = stretch*w - inset
+			// shortens the box from the left → only the left edge moves.
+			heroHtml.style.marginRight = -(w * (stretch - 1)) + 'px';
+		}
+
+		sync();
+
+		if (typeof ResizeObserver !== 'undefined') {
+			var ro = new ResizeObserver(sync);
+			ro.observe(pill);
+		}
+		window.addEventListener('resize', sync);
+		if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function') {
+			document.fonts.ready.then(sync);
+		}
+	})();
+</script>

@@ -1,0 +1,32 @@
+---
+title: Brume Enterprise Edition
+description: Brume Enterprise — priority support, SSO, audit logs and an SLA for production teams.
+template: splash
+hero:
+  title: 'Brume <span class="hero-accent">Enterprise</span>'
+  tagline: 'Production-grade pseudonymization for teams with strict compliance, governance and uptime requirements.'
+---
+
+import EnterpriseContactForm from '../../components/EnterpriseContactForm.astro';
+
+<section class="brume-enterprise-section">
+  <h2 class="brume-enterprise-eyebrow">What you get on top of the open-source edition</h2>
+  <ul class="brume-enterprise-features">
+    <li>
+      <h3>SLA &amp; priority support</h3>
+      <p>Direct line to the maintainers with guaranteed response times, escalation path, and weekend coverage available.</p>
+    </li>
+    <li>
+      <h3>Custom PII</h3>
+      <p>We extend brume to recognize your domain-specific PII (medical IDs, internal account numbers, telco MSISDNs, anything not covered by the default semantic types). Pseudonymization stays deterministic and FK-safe.</p>
+    </li>
+  </ul>
+</section>
+
+<section class="brume-enterprise-section brume-enterprise-contact">
+  <h2 class="brume-enterprise-eyebrow">Talk to us</h2>
+  <p class="brume-enterprise-lead">
+    Tell us a bit about your environment. We get back within two business days.
+  </p>
+  <EnterpriseContactForm />
+</section>

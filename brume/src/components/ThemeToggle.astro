@@ -1,0 +1,76 @@
+---
+---
+
+<starlight-theme-toggle>
+	<button class="theme-toggle" aria-label="Basculer le thème">
+		<svg class="icon icon-sun" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+			<circle cx="12" cy="12" r="4" fill="currentColor"></circle>
+			<g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+				<line x1="12" y1="2" x2="12" y2="5"></line>
+				<line x1="12" y1="19" x2="12" y2="22"></line>
+				<line x1="2" y1="12" x2="5" y2="12"></line>
+				<line x1="19" y1="12" x2="22" y2="12"></line>
+				<line x1="4.2" y1="4.2" x2="6.3" y2="6.3"></line>
+				<line x1="17.7" y1="17.7" x2="19.8" y2="19.8"></line>
+				<line x1="4.2" y1="19.8" x2="6.3" y2="17.7"></line>
+				<line x1="17.7" y1="6.3" x2="19.8" y2="4.2"></line>
+			</g>
+		</svg>
+		<svg class="icon icon-moon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+			<path
+				fill="currentColor"
+				d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+			></path>
+		</svg>
+	</button>
+</starlight-theme-toggle>
+
+<style>
+	.theme-toggle {
+		background: transparent;
+		border: none;
+		color: var(--sl-color-gray-2);
+		cursor: pointer;
+		padding: 0.35rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 0.4rem;
+		transition: color 0.15s, background-color 0.15s, box-shadow 0.15s;
+	}
+	.theme-toggle:hover {
+		color: var(--sl-color-white);
+		background-color: var(--brume-sage-tint-soft);
+	}
+	.theme-toggle:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 2px var(--brume-sage-glow);
+	}
+	.theme-toggle .icon-sun {
+		display: none;
+	}
+	:global([data-theme='dark']) .theme-toggle .icon-sun {
+		display: block;
+	}
+	:global([data-theme='dark']) .theme-toggle .icon-moon {
+		display: none;
+	}
+</style>
+
+<script>
+	class StarlightThemeToggle extends HTMLElement {
+		constructor() {
+			super();
+			const button = this.querySelector('button');
+			button?.addEventListener('click', () => {
+				const current = document.documentElement.dataset.theme || 'light';
+				const next = current === 'dark' ? 'light' : 'dark';
+				document.documentElement.dataset.theme = next;
+				try {
+					localStorage.setItem('starlight-theme', next);
+				} catch {}
+			});
+		}
+	}
+	customElements.define('starlight-theme-toggle', StarlightThemeToggle);
+</script>

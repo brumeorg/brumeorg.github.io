@@ -1,0 +1,148 @@
+---
+title: Brume · GDPR-compliant PostgreSQL pseudonymization with FK preservation
+description: Produce deterministic, foreign-key-safe pseudonymized copies of your PostgreSQL data for debugging, testing and demos — never with real identities. GDPR by design.
+template: splash
+hero:
+  title: '<span class="brume-cli"><span class="brume-cli-prompt">brume</span> <span class="brume-cli-cmd" id="brume-cli-cmd">plan</span><span class="brume-caret" aria-hidden="true"></span></span>'
+  tagline: 'Deterministic PostgreSQL pseudonymization with foreign key preservation. For debugging, testing, demos — anywhere but production.'
+  actions:
+    - text: How it works
+      link: /docs/getting-started/
+      icon: right-arrow
+      variant: minimal
+  image:
+    html: |
+      <div class="brume-terminal" aria-label="Brume install instructions">
+        <div class="brume-terminal-bar">
+          <span class="brume-terminal-dot brume-terminal-dot-red"></span>
+          <span class="brume-terminal-dot brume-terminal-dot-yellow"></span>
+          <span class="brume-terminal-dot brume-terminal-dot-green"></span>
+          <span class="brume-terminal-title">install · <span data-os-label>debian/ubuntu</span></span>
+        </div>
+        <div class="brume-terminal-body">
+          <div class="brume-terminal-block" data-os="debian">
+            <div class="brume-terminal-line c"># 1. Configure the repo (one time only)</div>
+            <div class="brume-terminal-line"><span class="p">$</span>curl -1sLf \</div>
+            <div class="brume-terminal-line indent">'https://dl.cloudsmith.io/public/brume/brume/setup.deb.sh' \</div>
+            <div class="brume-terminal-line indent">| sudo -E bash</div>
+            <div class="brume-terminal-spacer"></div>
+            <div class="brume-terminal-line c"># 2. Install</div>
+            <div class="brume-terminal-line"><span class="p">$</span>sudo apt-get install brume</div>
+            <div class="brume-terminal-spacer"></div>
+            <div class="brume-terminal-line c"># Updates afterwards</div>
+            <div class="brume-terminal-line"><span class="p">$</span>sudo apt-get update &amp;&amp; \</div>
+            <div class="brume-terminal-line indent">sudo apt-get upgrade brume<span class="brume-terminal-cursor" aria-hidden="true"></span></div>
+          </div>
+          <div class="brume-terminal-block brume-hidden" data-os="rhel">
+            <div class="brume-terminal-line c"># 1. Configure the repo (one time only)</div>
+            <div class="brume-terminal-line"><span class="p">$</span>curl -1sLf \</div>
+            <div class="brume-terminal-line indent">'https://dl.cloudsmith.io/public/brume/brume/setup.rpm.sh' \</div>
+            <div class="brume-terminal-line indent">| sudo -E bash</div>
+            <div class="brume-terminal-spacer"></div>
+            <div class="brume-terminal-line c"># 2. Install</div>
+            <div class="brume-terminal-line"><span class="p">$</span>sudo dnf install brume<span class="brume-terminal-cursor" aria-hidden="true"></span></div>
+          </div>
+          <div class="brume-terminal-block brume-hidden" data-os="macos">
+            <div class="brume-terminal-line c"># 1. Configure the repo (one time only)</div>
+            <div class="brume-terminal-line"><span class="p">$</span>brew tap brumeorg/brume</div>
+            <div class="brume-terminal-line"><span class="p">$</span>brew trust --formula brumeorg/brume/brume</div>
+            <div class="brume-terminal-spacer"></div>
+            <div class="brume-terminal-line c"># 2. Install</div>
+            <div class="brume-terminal-line"><span class="p">$</span>brew install brume</div>
+            <div class="brume-terminal-spacer"></div>
+            <div class="brume-terminal-line c"># Updates afterwards</div>
+            <div class="brume-terminal-line"><span class="p">$</span>brew upgrade brume<span class="brume-terminal-cursor" aria-hidden="true"></span></div>
+          </div>
+        </div>
+      </div>
+---
+
+import CliTypewriter from '../../components/CliTypewriter.astro';
+import InstallTerminal from '../../components/InstallTerminal.astro';
+import TerminalAlignPill from '../../components/TerminalAlignPill.astro';
+
+<CliTypewriter />
+<InstallTerminal />
+<TerminalAlignPill />
+
+<div class="brume-cta brume-cta-top">
+  <div class="brume-bracketed brume-bracketed-inline">
+    <span class="brume-corner brume-corner-tl" aria-hidden="true"></span>
+    <span class="brume-corner brume-corner-tr" aria-hidden="true"></span>
+    <span class="brume-corner brume-corner-bl" aria-hidden="true"></span>
+    <span class="brume-corner brume-corner-br" aria-hidden="true"></span>
+    <a class="brume-btn brume-btn-primary" href="/docs/getting-started/">
+      Start using Brume
+    </a>
+  </div>
+</div>
+
+<ul class="brume-features">
+  <li class="brume-feature">
+    <div class="brume-feature-icon">
+      <video class="brume-feature-video" autoplay loop muted playsinline aria-hidden="true">
+        <source src="/lock.mov" type="video/quicktime; codecs=ap4h" />
+        <source src="/lock.webm" type="video/webm; codecs=vp9" />
+      </video>
+    </div>
+    <div class="brume-feature-body">
+      <h3>Secure your data</h3>
+      <p class="brume-feature-summary">Column-level pseudonymization with deterministic, keyed transformations.</p>
+      <p class="brume-feature-detail">Apply column-level pseudonymization with the strategy that fits each field. FAKE for realistic synthetic values, MASK for partial reveals, HASH for one-way hashing, NULLIFY
+           to drop sensitive data, or FPE_ID / FPE_UUID for format-preserving encryption of identifiers. Every transformation is deterministic and keyed by your hmac-secret and fpe-key:
+            same input + same secret = same output, every time. Two runs produce identical results — your tests stay stable, your debug sessions stay coherent across rebuilds.</p>
+    </div>
+  </li>
+
+  <li class="brume-feature">
+    <div class="brume-feature-icon">
+      <video class="brume-feature-video" autoplay loop muted playsinline aria-hidden="true">
+        <source src="/constraint.mov" type="video/quicktime; codecs=hvc1" />
+        <source src="/constraint.webm" type="video/webm; codecs=vp9" />
+      </video>
+    </div>
+    <div class="brume-feature-body">
+      <h3>Keep your constraint</h3>
+      <p class="brume-feature-summary">Foreign keys stay valid end-to-end. No disabled triggers, no broken joins.</p>
+      <p class="brume-feature-detail">Foreign keys stay valid on the target database. No disabled triggers, no suspended integrity checks, no patching broken joins after the fact. Format-preserving encryption
+           rewrites primary keys and the FKs that point to them consistently, so referential integrity holds end-to-end. And when your business logic spans tables that aren't formally
+           joined (e.g. an email shared between users and audit_logs), linked_columns guarantees the same real value produces the same fake value across all of them.</p>
+    </div>
+  </li>
+
+  <li class="brume-feature">
+    <div class="brume-feature-icon">
+      <video class="brume-feature-video" autoplay loop muted playsinline aria-hidden="true">
+        <source src="/subset.mov" type="video/quicktime; codecs=hvc1" />
+        <source src="/subset.webm" type="video/webm; codecs=vp9" />
+      </video>
+    </div>
+    <div class="brume-feature-body">
+      <h3>Take only what you need</h3>
+      <p class="brume-feature-summary">Row-level filters with automatic FK traversal — a self-contained subset of your data.</p>
+      <p class="brume-feature-detail">Define row-level filters on any table (created_at >= '2025-01-01', tenant_id = 42…) and let Brume traverse foreign keys automatically up to fk_depth levels. Both parents and
+            children. You get a self-contained, FK-coherent subset of your production data, scoped to exactly what your debug session or test environment needs. Nothing more, nothing less.</p>
+    </div>
+  </li>
+
+  <li class="brume-feature">
+    <div class="brume-feature-icon">
+      <video class="brume-feature-video" autoplay loop muted playsinline aria-hidden="true">
+        <source src="/configure.mov" type="video/quicktime; codecs=hvc1" />
+        <source src="/configure.webm" type="video/webm; codecs=vp9" />
+      </video>
+    </div>
+    <div class="brume-feature-body">
+      <h3>Fully configurable</h3>
+      <p class="brume-feature-summary">Declarative <code>brume.yml</code> — semantic types, JSONB paths, version-controllable.</p>
+      <p class="brume-feature-detail">A single declarative brume.yml file describes, per table and per column, the strategy to apply. Semantic types (EMAIL, PHONE, IBAN, ADDRESS…) make generated data contextually
+            realistic, JSONB paths let you target nested fields individually, and the whole file is version-controllable, so you can review and sign off on the exact
+           transformation rules before any pseudonymization run touches a database.</p>
+    </div>
+  </li>
+</ul>
+
+<div class="brume-cta brume-cta-bottom">
+  <p class="brume-cta-tease">…and much more.</p>
+  <a class="brume-btn brume-btn-secondary" href="/docs/">Discover Brume features</a>
+</div>

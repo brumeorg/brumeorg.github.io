@@ -1,0 +1,52 @@
+---
+// Detects the visitor OS and reveals the matching install block.
+// Markup itself lives in the hero.image.html of index.mdx because
+// hero.image.html only accepts a raw string.
+---
+
+<script is:inline>
+	(function () {
+		var ua = (navigator.userAgent || '').toLowerCase();
+		var platform = (navigator.platform || '').toLowerCase();
+		var uaDataPlat = '';
+		if (navigator.userAgentData && navigator.userAgentData.platform) {
+			uaDataPlat = navigator.userAgentData.platform.toLowerCase();
+		}
+		var sample = ua + ' ' + platform + ' ' + uaDataPlat;
+
+		var os = 'debian';
+		if (sample.indexOf('mac') !== -1 || sample.indexOf('darwin') !== -1) {
+			os = 'macos';
+		} else if (
+			sample.indexOf('fedora') !== -1 ||
+			sample.indexOf('red hat') !== -1 ||
+			sample.indexOf('rhel') !== -1 ||
+			sample.indexOf('centos') !== -1 ||
+			sample.indexOf('rocky') !== -1 ||
+			sample.indexOf('almalinux') !== -1
+		) {
+			os = 'rhel';
+		}
+
+		var blocks = document.querySelectorAll('.brume-terminal-block[data-os]');
+		var matched = false;
+		for (var i = 0; i < blocks.length; i++) {
+			var isMatch = blocks[i].getAttribute('data-os') === os;
+			blocks[i].classList.toggle('brume-hidden', !isMatch);
+			if (isMatch) matched = true;
+		}
+		if (!matched) {
+			os = 'debian';
+			for (var j = 0; j < blocks.length; j++) {
+				var isDebian = blocks[j].getAttribute('data-os') === 'debian';
+				blocks[j].classList.toggle('brume-hidden', !isDebian);
+			}
+		}
+
+		var labels = document.querySelectorAll('[data-os-label]');
+		var pretty = { debian: 'debian/ubuntu', rhel: 'rhel/fedora', macos: 'macos' }[os] || os;
+		for (var k = 0; k < labels.length; k++) {
+			labels[k].textContent = pretty;
+		}
+	})();
+</script>
