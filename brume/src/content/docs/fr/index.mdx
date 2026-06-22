@@ -1,0 +1,148 @@
+---
+title: Brume · Pseudonymisation PostgreSQL conforme RGPD avec préservation des clés étrangères
+description: Produisez des copies pseudonymisées, déterministes et sûres pour les clés étrangères de vos données PostgreSQL pour le debug, les tests et les démos — sans jamais exposer d'identités réelles. RGPD by design.
+template: splash
+hero:
+  title: '<span class="brume-cli"><span class="brume-cli-prompt">brume</span> <span class="brume-cli-cmd" id="brume-cli-cmd">plan</span><span class="brume-caret" aria-hidden="true"></span></span>'
+  tagline: 'Pseudonymisation déterministe de PostgreSQL avec préservation des clés étrangères. Pour le debug, les tests, les démos — partout sauf en production.'
+  actions:
+    - text: Comment ça marche
+      link: /fr/docs/getting-started/
+      icon: right-arrow
+      variant: minimal
+  image:
+    html: |
+      <div class="brume-terminal" aria-label="Instructions d'installation de Brume">
+        <div class="brume-terminal-bar">
+          <span class="brume-terminal-dot brume-terminal-dot-red"></span>
+          <span class="brume-terminal-dot brume-terminal-dot-yellow"></span>
+          <span class="brume-terminal-dot brume-terminal-dot-green"></span>
+          <span class="brume-terminal-title">install · <span data-os-label>debian/ubuntu</span></span>
+        </div>
+        <div class="brume-terminal-body">
+          <div class="brume-terminal-block" data-os="debian">
+            <div class="brume-terminal-line c"># 1. Configurer le dépôt (une seule fois)</div>
+            <div class="brume-terminal-line"><span class="p">$</span>curl -1sLf \</div>
+            <div class="brume-terminal-line indent">'https://dl.cloudsmith.io/public/brume/brume/setup.deb.sh' \</div>
+            <div class="brume-terminal-line indent">| sudo -E bash</div>
+            <div class="brume-terminal-spacer"></div>
+            <div class="brume-terminal-line c"># 2. Installer</div>
+            <div class="brume-terminal-line"><span class="p">$</span>sudo apt-get install brume</div>
+            <div class="brume-terminal-spacer"></div>
+            <div class="brume-terminal-line c"># Mises à jour ultérieures</div>
+            <div class="brume-terminal-line"><span class="p">$</span>sudo apt-get update &amp;&amp; \</div>
+            <div class="brume-terminal-line indent">sudo apt-get upgrade brume<span class="brume-terminal-cursor" aria-hidden="true"></span></div>
+          </div>
+          <div class="brume-terminal-block brume-hidden" data-os="rhel">
+            <div class="brume-terminal-line c"># 1. Configurer le dépôt (une seule fois)</div>
+            <div class="brume-terminal-line"><span class="p">$</span>curl -1sLf \</div>
+            <div class="brume-terminal-line indent">'https://dl.cloudsmith.io/public/brume/brume/setup.rpm.sh' \</div>
+            <div class="brume-terminal-line indent">| sudo -E bash</div>
+            <div class="brume-terminal-spacer"></div>
+            <div class="brume-terminal-line c"># 2. Installer</div>
+            <div class="brume-terminal-line"><span class="p">$</span>sudo dnf install brume<span class="brume-terminal-cursor" aria-hidden="true"></span></div>
+          </div>
+          <div class="brume-terminal-block brume-hidden" data-os="macos">
+            <div class="brume-terminal-line c"># 1. Configurer le tap (une seule fois)</div>
+            <div class="brume-terminal-line"><span class="p">$</span>brew tap brumeorg/brume</div>
+            <div class="brume-terminal-line"><span class="p">$</span>brew trust --formula brumeorg/brume/brume</div>
+            <div class="brume-terminal-spacer"></div>
+            <div class="brume-terminal-line c"># 2. Installer</div>
+            <div class="brume-terminal-line"><span class="p">$</span>brew install brume</div>
+            <div class="brume-terminal-spacer"></div>
+            <div class="brume-terminal-line c"># Mises à jour ultérieures</div>
+            <div class="brume-terminal-line"><span class="p">$</span>brew upgrade brume<span class="brume-terminal-cursor" aria-hidden="true"></span></div>
+          </div>
+        </div>
+      </div>
+---
+
+import CliTypewriter from '../../../components/CliTypewriter.astro';
+import InstallTerminal from '../../../components/InstallTerminal.astro';
+import TerminalAlignPill from '../../../components/TerminalAlignPill.astro';
+
+<CliTypewriter />
+<InstallTerminal />
+<TerminalAlignPill />
+
+<div class="brume-cta brume-cta-top">
+  <div class="brume-bracketed brume-bracketed-inline">
+    <span class="brume-corner brume-corner-tl" aria-hidden="true"></span>
+    <span class="brume-corner brume-corner-tr" aria-hidden="true"></span>
+    <span class="brume-corner brume-corner-bl" aria-hidden="true"></span>
+    <span class="brume-corner brume-corner-br" aria-hidden="true"></span>
+    <a class="brume-btn brume-btn-primary" href="/fr/docs/getting-started/">
+      Commencer avec Brume
+    </a>
+  </div>
+</div>
+
+<ul class="brume-features">
+  <li class="brume-feature">
+    <div class="brume-feature-icon">
+      <video class="brume-feature-video" autoplay loop muted playsinline aria-hidden="true">
+        <source src="/lock.mov" type="video/quicktime; codecs=ap4h" />
+        <source src="/lock.webm" type="video/webm; codecs=vp9" />
+      </video>
+    </div>
+    <div class="brume-feature-body">
+      <h3>Sécurisez vos données</h3>
+      <p class="brume-feature-summary">Pseudonymisation au niveau colonne avec des transformations déterministes et clé-dépendantes.</p>
+      <p class="brume-feature-detail">Appliquez la pseudonymisation au niveau colonne avec la stratégie qui correspond à chaque champ. FAKE pour des valeurs synthétiques réalistes, MASK pour des dévoilements partiels, HASH pour un hachage à sens unique, NULLIFY
+           pour supprimer les données sensibles, ou FPE_ID / FPE_UUID pour un chiffrement préservant le format des identifiants. Chaque transformation est déterministe et indexée par votre hmac-secret et votre fpe-key :
+            même entrée + même secret = même sortie, à chaque fois. Deux exécutions produisent des résultats identiques — vos tests restent stables, vos sessions de debug restent cohérentes entre les reconstructions.</p>
+    </div>
+  </li>
+
+  <li class="brume-feature">
+    <div class="brume-feature-icon">
+      <video class="brume-feature-video" autoplay loop muted playsinline aria-hidden="true">
+        <source src="/constraint.mov" type="video/quicktime; codecs=hvc1" />
+        <source src="/constraint.webm" type="video/webm; codecs=vp9" />
+      </video>
+    </div>
+    <div class="brume-feature-body">
+      <h3>Préservez vos contraintes</h3>
+      <p class="brume-feature-summary">Les clés étrangères restent valides de bout en bout. Pas de triggers désactivés, pas de jointures cassées.</p>
+      <p class="brume-feature-detail">Les clés étrangères restent valides sur la base cible. Pas de triggers désactivés, pas de vérifications d'intégrité suspendues, pas de jointures cassées à rattraper après coup. Le chiffrement préservant le format
+           réécrit les clés primaires et les FK qui les référencent de manière cohérente, l'intégrité référentielle tient de bout en bout. Et quand votre logique métier s'étend sur des tables qui ne sont pas formellement
+           jointes (par ex. un email partagé entre users et audit_logs), linked_columns garantit que la même valeur réelle produit la même valeur fictive partout.</p>
+    </div>
+  </li>
+
+  <li class="brume-feature">
+    <div class="brume-feature-icon">
+      <video class="brume-feature-video" autoplay loop muted playsinline aria-hidden="true">
+        <source src="/subset.mov" type="video/quicktime; codecs=hvc1" />
+        <source src="/subset.webm" type="video/webm; codecs=vp9" />
+      </video>
+    </div>
+    <div class="brume-feature-body">
+      <h3>Ne prenez que ce qu'il vous faut</h3>
+      <p class="brume-feature-summary">Filtres au niveau ligne avec traversée automatique des FK — un sous-ensemble autonome de vos données.</p>
+      <p class="brume-feature-detail">Définissez des filtres au niveau ligne sur n'importe quelle table (created_at &gt;= '2025-01-01', tenant_id = 42…) et laissez Brume traverser automatiquement les clés étrangères jusqu'à fk_depth niveaux. Parents et
+            enfants. Vous obtenez un sous-ensemble autonome, cohérent au niveau FK, de vos données de production, limité exactement à ce dont votre session de debug ou votre environnement de test a besoin. Rien de plus, rien de moins.</p>
+    </div>
+  </li>
+
+  <li class="brume-feature">
+    <div class="brume-feature-icon">
+      <video class="brume-feature-video" autoplay loop muted playsinline aria-hidden="true">
+        <source src="/configure.mov" type="video/quicktime; codecs=hvc1" />
+        <source src="/configure.webm" type="video/webm; codecs=vp9" />
+      </video>
+    </div>
+    <div class="brume-feature-body">
+      <h3>Entièrement configurable</h3>
+      <p class="brume-feature-summary"><code>brume.yml</code> déclaratif — types sémantiques, chemins JSONB, versionnable.</p>
+      <p class="brume-feature-detail">Un unique fichier déclaratif brume.yml décrit, par table et par colonne, la stratégie à appliquer. Les types sémantiques (EMAIL, PHONE, IBAN, ADDRESS…) rendent les données générées contextuellement
+            réalistes, les chemins JSONB permettent de cibler individuellement des champs imbriqués, et l'ensemble du fichier est versionnable, vous pouvez ainsi revoir et valider les règles de transformation
+           exactes avant qu'aucune exécution de pseudonymisation ne touche une base de données.</p>
+    </div>
+  </li>
+</ul>
+
+<div class="brume-cta brume-cta-bottom">
+  <p class="brume-cta-tease">…et bien plus encore.</p>
+  <a class="brume-btn brume-btn-secondary" href="/fr/docs/">Découvrir les fonctionnalités de Brume</a>
+</div>

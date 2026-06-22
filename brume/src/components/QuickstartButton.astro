@@ -1,11 +1,14 @@
 ---
-const href = '/docs/getting-started/';
+const t = Astro.locals.t;
 const { pathname } = Astro.url;
+const isFrench = pathname.startsWith('/fr/') || pathname === '/fr';
+const href = isFrench ? '/fr/docs/getting-started/' : '/docs/getting-started/';
 const isActive = pathname.startsWith(href);
+const label = t('header.quickstart');
 ---
 
 <a class:list={['quickstart-btn', { active: isActive }]} {href}>
-	<span>Quickstart</span>
+	<span>{label}</span>
 	<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
 		<path
 			fill="none"

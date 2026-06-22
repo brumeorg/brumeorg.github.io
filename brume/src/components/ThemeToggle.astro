@@ -1,8 +1,10 @@
 ---
+const t = Astro.locals.t;
+const label = t('theme.toggle');
 ---
 
 <starlight-theme-toggle>
-	<button class="theme-toggle" aria-label="Basculer le thème">
+	<button class="theme-toggle" aria-label={label}>
 		<svg class="icon icon-sun" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
 			<circle cx="12" cy="12" r="4" fill="currentColor"></circle>
 			<g stroke="currentColor" stroke-width="2" stroke-linecap="round">

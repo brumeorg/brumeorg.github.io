@@ -1,12 +1,22 @@
 ---
+const t = Astro.locals.t;
+const { pathname } = Astro.url;
+const isFrench = pathname.startsWith('/fr/') || pathname === '/fr';
+const p = isFrench ? '/fr' : '';
+
 const tabs = [
-	{ label: 'Docs', href: '/docs/' },
-	{ label: 'Roadmap', href: '/roadmap/' },
-	{ label: 'Support', href: '/support/' },
-	{ label: 'Enterprise', href: '/enterprise/', cta: true },
+	{ label: t('header.docs'), href: `${p}/docs/` },
+	{ label: t('header.roadmap'), href: `${p}/roadmap/` },
+	{ label: t('header.support'), href: `${p}/support/` },
+	{ label: t('header.enterprise'), href: `${p}/enterprise/`, cta: true },
 ];
 
-const { pathname } = Astro.url;
+// Build the URL for the same page in the other locale.
+const otherLocaleUrl = isFrench
+	? pathname.replace(/^\/fr(\/|$)/, '/')
+	: '/fr' + (pathname === '/' ? '/' : pathname);
+const otherLocaleLabel = isFrench ? 'EN' : 'FR';
+const otherLocaleAria = isFrench ? 'Switch to English' : 'Passer en français';
 ---
 
 <nav class="header-tabs">
@@ -26,6 +36,15 @@ const { pathname } = Astro.url;
 		))
 	}
 	<a
+		class="lang-switch"
+		href={otherLocaleUrl}
+		aria-label={otherLocaleAria}
+		hreflang={isFrench ? 'en' : 'fr'}
+		data-lang-pick={isFrench ? 'en' : 'fr'}
+	>
+		{otherLocaleLabel}
+	</a>
+	<a
 		href="https://github.com/brumeorg/Brume"
 		class="github-link"
 		aria-label="GitHub"
@@ -40,6 +59,18 @@ const { pathname } = Astro.url;
 		</svg>
 	</a>
 </nav>
+
+<script is:inline>
+	(function () {
+		var link = document.querySelector('a.lang-switch[data-lang-pick]');
+		if (!link) return;
+		link.addEventListener('click', function () {
+			try {
+				localStorage.setItem('brume_lang', link.getAttribute('data-lang-pick'));
+			} catch (e) {}
+		});
+	})();
+</script>
 
 <style>
 	.header-tabs {
@@ -79,7 +110,7 @@ const { pathname } = Astro.url;
 		border-radius: 2px;
 		background: var(--brume-sage);
 	}
-	/* Enterprise Edition — tab discrètement contoursée */
+	/* Enterprise Edition — tab discrètement contourée */
 	.header-tabs a.cta {
 		border: 1px solid var(--brume-hairline);
 		margin-left: 0.35rem;
@@ -94,6 +125,21 @@ const { pathname } = Astro.url;
 		color: var(--brume-sage);
 	}
 	.header-tabs a.cta.active::after {
+		display: none;
+	}
+	.header-tabs .lang-switch {
+		font-size: 0.72rem;
+		letter-spacing: 0.06em;
+		font-weight: 600;
+		padding: 0.35rem 0.55rem;
+		margin-left: 0.35rem;
+		color: var(--sl-color-gray-3);
+	}
+	.header-tabs .lang-switch:hover {
+		color: var(--brume-sage);
+		background-color: transparent;
+	}
+	.header-tabs .lang-switch.active::after {
 		display: none;
 	}
 	.header-tabs .github-link {

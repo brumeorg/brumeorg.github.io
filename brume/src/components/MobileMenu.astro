@@ -1,16 +1,17 @@
 ---
-// Overrides the Search slot to render a hamburger button on mobile.
-// On desktop the button is hidden via CSS. Clicking it toggles
-// `data-mobile-menu="open"` on <html>, which the CSS uses to reveal
-// the `.right-group` (tabs + GitHub + theme + Quickstart) as a drawer.
+const t = Astro.locals.t;
+const labelOpen = t('header.menuOpen');
+const labelClose = t('header.menuClose');
 ---
 
 <button
 	type="button"
 	class="brume-mobile-menu-btn"
 	id="brume-mobile-menu-btn"
-	aria-label="Open menu"
+	aria-label={labelOpen}
 	aria-expanded="false"
+	data-label-open={labelOpen}
+	data-label-close={labelClose}
 >
 	<svg viewBox="0 0 22 22" width="22" height="22" aria-hidden="true">
 		<path class="line line-1" d="M3 6h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
@@ -24,11 +25,13 @@
 		var btn = document.getElementById('brume-mobile-menu-btn');
 		if (!btn) return;
 		var html = document.documentElement;
+		var labelOpen = btn.getAttribute('data-label-open') || 'Open menu';
+		var labelClose = btn.getAttribute('data-label-close') || 'Close menu';
 
 		function setOpen(open) {
 			html.setAttribute('data-mobile-menu', open ? 'open' : 'closed');
 			btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-			btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+			btn.setAttribute('aria-label', open ? labelClose : labelOpen);
 		}
 
 		setOpen(false);

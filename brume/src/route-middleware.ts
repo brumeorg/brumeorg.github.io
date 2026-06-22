@@ -12,11 +12,20 @@ const SECTIONS: Record<string, string> = {
 	'/support': 'support',
 };
 
+/** Strip the `/fr` locale prefix so the same section logic works in both locales. */
+function stripLocale(pathname: string): { path: string; isFrench: boolean } {
+	if (pathname === '/fr' || pathname.startsWith('/fr/')) {
+		return { path: pathname.replace(/^\/fr/, '') || '/', isFrench: true };
+	}
+	return { path: pathname, isFrench: false };
+}
+
 /** Detect the section a sidebar entry belongs to from the first link it contains. */
 function entrySection(entry: SidebarEntry): string | null {
 	if (entry.type === 'link') {
+		const { path } = stripLocale(new URL(entry.href, 'http://x').pathname);
 		for (const [prefix, name] of Object.entries(SECTIONS)) {
-			if (entry.href.startsWith(prefix + '/') || entry.href === prefix + '/') {
+			if (path.startsWith(prefix + '/') || path === prefix + '/') {
 				return name;
 			}
 		}
@@ -32,19 +41,36 @@ function entrySection(entry: SidebarEntry): string | null {
 
 /** Detect the current section from the request URL. */
 function currentSection(pathname: string): string | null {
+	const { path } = stripLocale(pathname);
 	for (const [prefix, name] of Object.entries(SECTIONS)) {
-		if (pathname === prefix + '/' || pathname.startsWith(prefix + '/')) {
+		if (path === prefix + '/' || path.startsWith(prefix + '/')) {
 			return name;
 		}
 	}
 	return null;
 }
 
+const KEYWORDS: Record<string, string> = {
+	en: 'postgresql, pseudonymization, GDPR, foreign keys, fake data, format-preserving encryption, test data, anonymization, postgres, database masking',
+	fr: 'postgresql, pseudonymisation, RGPD, clés étrangères, fausses données, chiffrement préservant le format, données de test, anonymisation, postgres, masquage de base de données',
+};
+
 export const onRequest = defineRouteMiddleware((context) => {
 	const route = context.locals.starlightRoute;
-	if (!route?.sidebar) return;
+	if (!route) return;
 
-	const section = currentSection(new URL(context.request.url).pathname);
+	const pathname = new URL(context.request.url).pathname;
+	const { isFrench } = stripLocale(pathname);
+
+	// Inject locale-specific SEO keywords (the global head only carries shared tags).
+	const lang = isFrench ? 'fr' : 'en';
+	(route.head ?? (route.head = [])).push({
+		tag: 'meta',
+		attrs: { name: 'keywords', content: KEYWORDS[lang] },
+	});
+
+	if (!route.sidebar) return;
+	const section = currentSection(pathname);
 	if (!section) return; // Landing or 404 — leave sidebar untouched.
 
 	// Roadmap pages have no left sidebar at all.

@@ -1,25 +1,37 @@
 ---
+const t = Astro.locals.t;
 const recipient = 'brume.org@gmail.com';
 ---
 
-<form class="brume-form" id="brume-enterprise-form" data-recipient={recipient}>
+<form
+	class="brume-form"
+	id="brume-enterprise-form"
+	data-recipient={recipient}
+	data-subject-prefix={t('enterprise.form.subjectPrefix')}
+	data-subject-fallback={t('enterprise.form.subjectFallback')}
+	data-label-name={t('enterprise.form.labelName')}
+	data-label-email={t('enterprise.form.labelEmail')}
+	data-label-company={t('enterprise.form.labelCompany')}
+	data-label-team={t('enterprise.form.labelTeam')}
+	data-sent-via={t('enterprise.form.sentVia')}
+>
 	<div class="brume-form-grid">
 		<label class="brume-form-field">
-			<span>Your name</span>
-			<input name="name" type="text" required autocomplete="name" placeholder="Jane Doe" />
+			<span>{t('enterprise.form.name')}</span>
+			<input name="name" type="text" required autocomplete="name" placeholder={t('enterprise.form.namePlaceholder')} />
 		</label>
 		<label class="brume-form-field">
-			<span>Work email</span>
+			<span>{t('enterprise.form.email')}</span>
 			<input name="email" type="email" required autocomplete="email" placeholder="jane@acme.com" />
 		</label>
 		<label class="brume-form-field">
-			<span>Company</span>
-			<input name="company" type="text" required autocomplete="organization" placeholder="Acme Inc." />
+			<span>{t('enterprise.form.company')}</span>
+			<input name="company" type="text" required autocomplete="organization" placeholder={t('enterprise.form.companyPlaceholder')} />
 		</label>
 		<label class="brume-form-field">
-			<span>Team size</span>
+			<span>{t('enterprise.form.teamSize')}</span>
 			<select name="team_size">
-				<option value="">Select…</option>
+				<option value="">{t('enterprise.form.teamSizeSelect')}</option>
 				<option value="1–10">1–10</option>
 				<option value="11–50">11–50</option>
 				<option value="51–200">51–200</option>
@@ -28,17 +40,17 @@ const recipient = 'brume.org@gmail.com';
 		</label>
 	</div>
 	<label class="brume-form-field brume-form-field-wide">
-		<span>What you need</span>
+		<span>{t('enterprise.form.message')}</span>
 		<textarea
 			name="message"
 			rows="4"
 			required
-			placeholder="Compliance scope, data volume, timeline, anything we should know…"
+			placeholder={t('enterprise.form.messagePlaceholder')}
 		></textarea>
 	</label>
 	<div class="brume-form-actions">
 		<button type="submit" class="brume-btn brume-btn-primary">
-			Open in mail
+			{t('enterprise.form.submit')}
 			<svg class="brume-btn-arrow" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
 				<path
 					fill="none"
@@ -51,8 +63,8 @@ const recipient = 'brume.org@gmail.com';
 			</svg>
 		</button>
 		<p class="brume-form-note">
-			Submitting opens your mail client pre-filled. Or write us directly at
-			<a href={`mailto:${recipient}`}>{recipient}</a>.
+			{t('enterprise.form.note')}
+			<a href={`mailto:${recipient}`}>{recipient}</a>{t('enterprise.form.noteOr')}
 		</p>
 	</div>
 </form>
@@ -65,19 +77,30 @@ const recipient = 'brume.org@gmail.com';
 			e.preventDefault();
 			var data = new FormData(form);
 			var to = form.getAttribute('data-recipient');
+			var subjectPrefix = form.getAttribute('data-subject-prefix') || 'Brume Enterprise — ';
+			var subjectFallback = form.getAttribute('data-subject-fallback') || 'inquiry';
+			var labelName = form.getAttribute('data-label-name') || 'Name:';
+			var labelEmail = form.getAttribute('data-label-email') || 'Email:';
+			var labelCompany = form.getAttribute('data-label-company') || 'Company:';
+			var labelTeam = form.getAttribute('data-label-team') || 'Team:';
+			var sentVia = form.getAttribute('data-sent-via') || '';
 			var company = (data.get('company') || '').toString().trim();
 			var name = (data.get('name') || '').toString().trim();
-			var subject = 'Brume Enterprise — ' + (company || 'inquiry');
+			var subject = subjectPrefix + (company || subjectFallback);
+			var pad = function (s) {
+				while (s.length < 10) s += ' ';
+				return s;
+			};
 			var lines = [
-				'Name:     ' + name,
-				'Email:    ' + (data.get('email') || ''),
-				'Company:  ' + company,
-				'Team:     ' + (data.get('team_size') || ''),
+				pad(labelName) + name,
+				pad(labelEmail) + (data.get('email') || ''),
+				pad(labelCompany) + company,
+				pad(labelTeam) + (data.get('team_size') || ''),
 				'',
 				(data.get('message') || '').toString(),
 				'',
 				'—',
-				'Sent via brumeorg.github.io/enterprise',
+				sentVia,
 			];
 			var url =
 				'mailto:' +

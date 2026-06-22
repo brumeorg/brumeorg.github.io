@@ -1,0 +1,106 @@
+---
+import { getCollection } from 'astro:content';
+
+type RoadmapStatus = 'Planned' | 'Exploration';
+type RoadmapGroup = 'Packaging' | 'Engine';
+
+interface GroupConfig {
+	kicker: string;
+	label: string;
+	blurb: string;
+}
+
+const t = Astro.locals.t;
+const { pathname } = Astro.url;
+const isFrench = pathname.startsWith('/fr/') || pathname === '/fr';
+const localePrefix = isFrench ? 'fr/' : '';
+
+const groupOrder: RoadmapGroup[] = ['Packaging', 'Engine'];
+const groupConfig: Record<RoadmapGroup, GroupConfig> = {
+	Packaging: {
+		kicker: '01',
+		label: isFrench ? 'Packaging' : 'Packaging',
+		blurb: t('roadmap.packaging.blurb'),
+	},
+	Engine: {
+		kicker: '02',
+		label: isFrench ? 'Moteur' : 'Engine',
+		blurb: t('roadmap.engine.blurb'),
+	},
+};
+
+const statusLabel: Record<RoadmapStatus, string> = {
+	Planned: t('roadmap.status.planned'),
+	Exploration: t('roadmap.status.exploration'),
+};
+
+// Only pull roadmap entries that match the current locale.
+const entries = await getCollection('docs', (entry) => {
+	const slug = entry.id ?? '';
+	const inLocale = isFrench ? slug.startsWith('fr/roadmap/') : slug.startsWith('roadmap/');
+	return inLocale && !!(entry.data as any).roadmap;
+});
+
+const grouped: Record<RoadmapGroup, typeof entries> = {
+	Packaging: [],
+	Engine: [],
+};
+for (const entry of entries) {
+	const g = (entry.data as any).roadmap.group as RoadmapGroup;
+	grouped[g].push(entry);
+}
+for (const g of groupOrder) {
+	grouped[g].sort((a, b) => (a.data as any).roadmap.order - (b.data as any).roadmap.order);
+}
+
+const statusSlug = (s: RoadmapStatus) => (s === 'Planned' ? 'planned' : 'exploration');
+
+const hrefFor = (entry: (typeof entries)[number]) => {
+	const slug = entry.id.replace(/\.(md|mdx)$/i, '');
+	return `/${slug}/`;
+};
+---
+
+<div class="brume-roadmap not-content">
+	<div class="brume-roadmap-lede"><slot /></div>
+
+	{groupOrder.map((groupName) => {
+		const config = groupConfig[groupName];
+		const items = grouped[groupName];
+		return (
+			<section class="brume-roadmap-group">
+				<div class="brume-roadmap-group-head">
+					<span class="brume-roadmap-kicker">{config.kicker}</span>
+					<h2 class="brume-roadmap-group-title" id={groupName.toLowerCase()}>
+						{config.label}
+					</h2>
+					<span class="brume-roadmap-group-blurb">{config.blurb}</span>
+				</div>
+
+				<div class="brume-roadmap-track">
+					{items.map((entry) => {
+						const meta = (entry.data as any).roadmap as { status: RoadmapStatus };
+						return (
+							<div class="brume-roadmap-item">
+								<span class={`brume-roadmap-node brume-roadmap-node--${statusSlug(meta.status)}`} />
+								<div class="brume-roadmap-item-head">
+									<a class="brume-roadmap-item-title" href={hrefFor(entry)}>
+										{entry.data.title}
+									</a>
+									<span class={`brume-roadmap-status brume-roadmap-status--${statusSlug(meta.status)}`}>
+										{statusLabel[meta.status]}
+									</span>
+								</div>
+								<p class="brume-roadmap-item-desc">{entry.data.description}</p>
+							</div>
+						);
+					})}
+				</div>
+			</section>
+		);
+	})}
+
+	<div class="brume-roadmap-note">
+		<slot name="note" />
+	</div>
+</div>
