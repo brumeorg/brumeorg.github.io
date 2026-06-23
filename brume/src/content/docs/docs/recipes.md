@@ -44,6 +44,8 @@ Because `FPE_ID` is deterministic, your bug at source `id = 982331` will land at
 
 **Problem.** You want `staging` to be re-pseudonymized every Sunday night from `prod`.
 
+**Prerequisites.** Commit your `brume.yml` at the repo root (or pass a path with `--config`). The job below assumes it's checked out alongside the workflow.
+
 **GitHub Actions example.**
 
 ```yaml
@@ -58,7 +60,12 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4   # pulls brume.yml from the repo
+      - name: Install pg_dump
+        run: |
+          # Match the major version to your prod source (here: Postgres 17)
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
       - name: Install Brume
         run: |
           curl -1sLf 'https://dl.cloudsmith.io/public/brume/brume/setup.deb.sh' | sudo -E bash
@@ -72,7 +79,7 @@ jobs:
           BRUME_TARGET_HOST:    ${{ secrets.STAGING_HOST }}
           BRUME_TARGET_PASSWORD: ${{ secrets.STAGING_PASSWORD }}
         run: |
-          brume diag
+          brume diag        # fails fast if pg_dump or connectivity is off
           brume plan
           brume execute
 ```

@@ -52,6 +52,24 @@ brew install brume
 brew upgrade brume
 ```
 
+## Install `pg_dump`
+
+Brume shells out to `pg_dump` to replicate the source schema. The binary must be on `PATH` and **its major version must match the source's** — e.g. for Postgres 17, install `postgresql-client-17`.
+
+```bash
+# Debian / Ubuntu
+sudo apt-get install postgresql-client-17
+
+# Fedora / CentOS
+sudo dnf install postgresql17
+
+# macOS
+brew install libpq
+brew link --force libpq
+```
+
+Replace `17` with the major version of your source. Run `brume diag` after install to verify the version matches.
+
 ## Verify the install
 
 ```bash

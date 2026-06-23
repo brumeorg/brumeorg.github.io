@@ -44,6 +44,8 @@ Comme `FPE_ID` est déterministe, votre bug à la source `id = 982331` atterrira
 
 **Problème.** Vous voulez que `staging` soit re-pseudonymisé chaque dimanche soir depuis `prod`.
 
+**Prérequis.** Commitez votre `brume.yml` à la racine du dépôt (ou passez un chemin avec `--config`). Le job ci-dessous suppose qu'il est récupéré en même temps que le workflow.
+
 **Exemple GitHub Actions.**
 
 ```yaml
@@ -58,7 +60,12 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4   # récupère brume.yml depuis le dépôt
+      - name: Install pg_dump
+        run: |
+          # Faites correspondre la version majeure à votre source prod (ici : Postgres 17)
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
       - name: Install Brume
         run: |
           curl -1sLf 'https://dl.cloudsmith.io/public/brume/brume/setup.deb.sh' | sudo -E bash
@@ -72,7 +79,7 @@ jobs:
           BRUME_TARGET_HOST:    ${{ secrets.STAGING_HOST }}
           BRUME_TARGET_PASSWORD: ${{ secrets.STAGING_PASSWORD }}
         run: |
-          brume diag
+          brume diag        # échoue tôt si pg_dump ou la connectivité ne va pas
           brume plan
           brume execute
 ```
