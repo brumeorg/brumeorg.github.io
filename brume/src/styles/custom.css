@@ -239,16 +239,31 @@ main > .content-panel:first-of-type:has(.hero)::after {
 /* Right hero column = terminal — fills the column, aligned with navbar pill */
 @media (min-width: 50rem) {
 	body:has(.hero) .hero {
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
-		gap: 3%;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+		gap: clamp(1.5rem, 3%, 3rem);
 	}
 	body:has(.hero) .hero > .hero-html {
 		width: 100%;
+		min-width: 0;
 		margin-inline: 0;
 	}
 	/* Empêche la colonne de gauche de gonfler avec le contenu CLI */
 	body:has(.hero) .hero > .stack {
 		min-width: 0;
+	}
+}
+
+/* Étape intermédiaire — colonne droite plus généreuse à partir de ~1024px */
+@media (min-width: 64rem) {
+	body:has(.hero) .hero {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+	}
+}
+
+/* Plein gabarit — colonne droite à 1.35fr à partir de ~1280px */
+@media (min-width: 80rem) {
+	body:has(.hero) .hero {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
 	}
 }
 
@@ -274,7 +289,7 @@ main > .content-panel:first-of-type:has(.hero)::after {
 	display: flex;
 	align-items: center;
 	gap: 0.45rem;
-	padding: 0.55rem 0.75rem;
+	padding: clamp(0.4rem, 0.2rem + 0.4vw, 0.55rem) clamp(0.55rem, 0.3rem + 0.5vw, 0.75rem);
 	border-bottom: 1px solid var(--brume-hairline);
 	background: rgba(0, 0, 0, 0.25);
 }
@@ -295,14 +310,14 @@ main > .content-panel:first-of-type:has(.hero)::after {
 .brume-terminal-title {
 	margin-left: auto;
 	font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
-	font-size: 0.72rem;
+	font-size: clamp(0.6rem, 0.45rem + 0.3vw, 0.72rem);
 	color: rgba(255, 255, 255, 0.45);
 	letter-spacing: 0.04em;
 	text-transform: lowercase;
 }
 
 .brume-terminal-body {
-	padding: 0.9rem 1rem 1.1rem;
+	padding: clamp(0.65rem, 0.4rem + 0.55vw, 0.9rem) clamp(0.7rem, 0.4rem + 0.6vw, 1rem) clamp(0.8rem, 0.5rem + 0.65vw, 1.1rem);
 }
 
 .brume-terminal-block {
@@ -313,7 +328,7 @@ main > .content-panel:first-of-type:has(.hero)::after {
 
 .brume-terminal-line {
 	font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-	font-size: 0.78rem;
+	font-size: clamp(0.62rem, 0.4rem + 0.55vw, 0.78rem);
 	line-height: 1.65;
 	color: rgba(255, 255, 255, 0.92);
 	white-space: pre-wrap;

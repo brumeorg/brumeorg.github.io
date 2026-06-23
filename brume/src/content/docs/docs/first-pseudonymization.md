@@ -10,7 +10,7 @@ This tutorial walks you through the full Brume flow on a minimal example. You'll
 Copy the example `.env` file next to your `brume.yml`:
 
 ```bash
-cp .env.example .env
+cp .env.template .env
 ```
 
 Fill in the two secrets and the connection strings for source and target:
