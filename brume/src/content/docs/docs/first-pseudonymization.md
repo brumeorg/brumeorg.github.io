@@ -7,10 +7,12 @@ This tutorial walks you through the full Brume flow on a minimal example. You'll
 
 ## 1. Set up secrets and connections
 
-Copy the example `.env` file next to your `brume.yml`:
+Generate a `.env.brume` template next to your `brume.yml`. Pick the sink type that matches your target:
 
 ```bash
-cp .env.template .env
+brume init jdbc    # target = a live Postgres database
+# or
+brume init dump    # target = a .sql file
 ```
 
 Fill in the two secrets and the connection strings for source and target:
@@ -35,7 +37,7 @@ BRUME_TARGET_USER=app
 BRUME_TARGET_PASSWORD=...
 ```
 
-See the [`.env` reference](/docs/env/) for the full list of variables.
+See the [`.env.brume` reference](/docs/env/) for the full list of variables.
 
 ## 2. Write a minimal `brume.yml`
 
