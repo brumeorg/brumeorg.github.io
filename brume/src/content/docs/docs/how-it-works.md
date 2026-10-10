@@ -71,7 +71,7 @@ Brume can write to two kinds of target:
 - **Another PostgreSQL database** — fastest path, ideal for `dev` / `staging` / debug environments.
 - **A `.sql` file** — portable, shippable, importable with `psql`. Useful for CI artifacts or DPO review.
 
-The choice is configured in `.env` — see the [`.env` reference](/docs/env/).
+The sink type is picked at scaffold time with `brume init dump` or `brume init jdbc`, then tuned in `.env.brume` — see the [`.env.brume` reference](/docs/env/).
 
 ## Next
 

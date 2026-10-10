@@ -1,9 +1,15 @@
 ---
-title: .env variables
+title: .env.brume variables
 description: All environment variables Brume reads — secrets, source / target connections, runtime options.
 ---
 
-Brume reads configuration from a `.env` file in the current working directory (or from the process environment if `.env` is absent). Two categories: **secrets** (mandatory) and **connections** (one source, one target).
+Brume reads configuration from a `.env.brume` file in the current working directory (or from the process environment if `.env.brume` is absent). Two categories: **secrets** (mandatory) and **connections** (one source, one target).
+
+Generate a template with [`brume init dump`](/docs/cli/#brume-init) (SQL file sink) or [`brume init jdbc`](/docs/cli/#brume-init) (PostgreSQL sink). The legacy `.env` filename is no longer read as of Brume 1.5.
+
+:::caution[Replace the template secrets]
+As of Brume 1.6, running any subcommand with `BRUME_HMAC_SECRET` or `BRUME_FPE_KEY` left at the placeholder value emitted by `brume init` triggers a warning. The placeholders are **not safe** — they're shared across every scaffold and defeat the point of pseudonymization. Replace them with high-entropy values before `brume execute`.
+:::
 
 ## Secrets
 
@@ -31,11 +37,16 @@ The database Brume reads from. **Use a read-only account.**
 | `BRUME_SOURCE_PASSWORD` | yes | Password |
 | `BRUME_SOURCE_SSLMODE` | no | `disable` · `prefer` · `require` · `verify-full`. Default `prefer`. |
 
-## Target connection
+## Target connection (sink)
 
-Either a Postgres connection **or** a directory for `.sql` output. Set one block, not both.
+Brume supports two **sink types** — pick the one that matches how `.env.brume` was generated:
 
-### Target = PostgreSQL database
+- **`jdbc`** — write to a live PostgreSQL target (`brume init jdbc`).
+- **`dump`** — write a `.sql` file (`brume init dump`).
+
+Set one block, not both.
+
+### Sink = `jdbc` (PostgreSQL database)
 
 | Variable | Required | Description |
 |---|---|---|
@@ -46,7 +57,7 @@ Either a Postgres connection **or** a directory for `.sql` output. Set one block
 | `BRUME_TARGET_PASSWORD` | yes | Password |
 | `BRUME_TARGET_SSLMODE` | no | Same values as source. |
 
-### Target = SQL file
+### Sink = `dump` (SQL file)
 
 | Variable | Required | Description |
 |---|---|---|
@@ -64,7 +75,7 @@ When `BRUME_TARGET_FILE` is set, the Postgres target variables are ignored.
 | `BRUME_LOG_FORMAT` | no | `pretty` | `pretty` or `json`. `--json` flag overrides this. |
 | `BRUME_LOCALE` | no | system | Locale for Datafaker (e.g. `fr_FR`, `en_US`, `de_DE`). |
 
-## Example `.env`
+## Example `.env.brume`
 
 ```bash
 # --- Secrets (protect at the level of the source data) ---
@@ -78,7 +89,7 @@ BRUME_SOURCE_USER=brume_reader
 BRUME_SOURCE_PASSWORD=...
 BRUME_SOURCE_SSLMODE=require
 
-# --- Target = local Postgres ---
+# --- Sink = jdbc (local Postgres) ---
 BRUME_TARGET_HOST=localhost
 BRUME_TARGET_DB=app_dev
 BRUME_TARGET_USER=app

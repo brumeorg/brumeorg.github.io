@@ -3,7 +3,7 @@ title: Référence brume.yml
 description: Le schéma complet du fichier de configuration brume.yml — extraction, anonymization, linked_columns, chemins JSONB.
 ---
 
-`brume.yml` est le fichier déclaratif unique qui décrit **quoi** extraire et **comment** le transformer. Il vit à côté de votre `.env` et est chargé automatiquement par chaque sous-commande de Brume.
+`brume.yml` est le fichier déclaratif unique qui décrit **quoi** extraire et **comment** le transformer. Il vit à côté de votre `.env.brume` et est chargé automatiquement par chaque sous-commande de Brume.
 
 ## Structure de premier niveau
 
@@ -210,4 +210,4 @@ anonymization:
 ## Suite
 
 - [**Commandes CLI**](/fr/docs/cli/) — comment exécuter `brume plan`, `execute`, `dry-run`.
-- [**Variables `.env`**](/fr/docs/env/) — connexions et secrets.
+- [**Variables `.env.brume`**](/fr/docs/env/) — connexions et secrets.

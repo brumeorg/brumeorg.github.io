@@ -3,7 +3,7 @@ title: Commandes CLI
 description: Chaque sous-commande Brume, chaque flag, chaque code de sortie.
 ---
 
-Brume expose un petit ensemble de sous-commandes. Toutes lisent le même `.env` et `brume.yml` depuis le répertoire de travail courant.
+Brume expose un petit ensemble de sous-commandes. Toutes lisent le même `.env.brume` et `brume.yml` depuis le répertoire de travail courant.
 
 ## Flags globaux
 
@@ -15,6 +15,26 @@ Disponibles sur chaque sous-commande :
 | `-q` · `--quiet` | Logs niveau ERROR uniquement (le rapport final est toujours visible sur stdout) |
 | `--json` | Sortie lisible par machine sur stdout, logs JSON sur stderr |
 | `-h` · `--help` | Affiche l'aide de la commande |
+
+## `brume init`
+
+Génère un template `.env.brume` dans le répertoire courant, pré-rempli pour un **type de sink** donné. L'argument sélectionne le bloc cible à écrire.
+
+```bash
+brume init dump    # sink = fichier SQL
+brume init jdbc    # sink = cible PostgreSQL via JDBC
+```
+
+| Argument | Bloc sink généré |
+|---|---|
+| `dump` | `BRUME_TARGET_FILE` / `BRUME_TARGET_FILE_COMPRESS` — écrit un dump `.sql` |
+| `jdbc` | `BRUME_TARGET_HOST` / `BRUME_TARGET_DB` / … — écrit vers une cible Postgres live |
+
+Les deux templates incluent aussi les blocs secrets et source. Éditez le `.env.brume` généré, puis exécutez `brume diag` pour valider la configuration. Ce fichier remplace la convention `.env` historique — toutes les autres sous-commandes lisent exclusivement `.env.brume`.
+
+:::caution
+`brume init` refuse d'écraser un `.env.brume` existant. Supprimez ou renommez le fichier existant si vous voulez vraiment le régénérer.
+:::
 
 ## `brume plan`
 
@@ -44,7 +64,7 @@ brume dry-run
 
 ## `brume execute`
 
-**Exécute la pseudonymisation réelle.** Lit depuis la source, transforme, écrit vers la cible (base de données ou fichier `.sql` selon le `.env`).
+**Exécute la pseudonymisation réelle.** Lit depuis la source, transforme, écrit vers la cible (base de données ou fichier `.sql` selon le `.env.brume`).
 
 ```bash
 brume execute
@@ -87,7 +107,7 @@ Utile comme première commande après installation de Brume sur une nouvelle mac
 | Code | Signification |
 |---|---|
 | `0` | Succès |
-| `1` | Erreur de configuration (`brume.yml` invalide, variable `.env` manquante) |
+| `1` | Erreur de configuration (`brume.yml` invalide, variable `.env.brume` manquante) |
 | `2` | Erreur d'exécution (connexion refusée, requête échouée, écriture échouée) |
 | `3` | Échec de validation (colonne PII non couverte avec `--strict`, seuil k-anonymat dépassé) |
 
@@ -96,5 +116,5 @@ Ces codes sont stables entre versions et sûrs à utiliser dans des garde-fous C
 ## Suite
 
 - [**Référence `brume.yml`**](/fr/docs/configuration/) — chaque clé.
-- [**Référence `.env`**](/fr/docs/env/) — chaque variable.
+- [**Référence `.env.brume`**](/fr/docs/env/) — chaque variable.
 - [**Recettes**](/fr/docs/recipes/) — workflows à copier-coller.

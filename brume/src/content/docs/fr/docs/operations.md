@@ -45,9 +45,9 @@ Par ordre de préférence :
 
 1. **Un gestionnaire de secrets** (Vault, AWS Secrets Manager, GCP Secret Manager, fichier chiffré SOPS).
 2. **Les secrets du fournisseur CI** (GitHub Actions encrypted secrets, GitLab masked variables).
-3. **Fichier `.env` dans un répertoire avec permissions POSIX strictes** (`chmod 600`, possédé uniquement par l'utilisateur brume).
+3. **Fichier `.env.brume` dans un répertoire avec permissions POSIX strictes** (`chmod 600`, possédé uniquement par l'utilisateur brume).
 
-**Ne jamais** mettre `.env` sous git. Le `.gitignore` livré avec `.env.example` inclut les bons patterns.
+**Ne jamais** mettre `.env.brume` sous git. Le template généré par `brume init` peut être commité ; le fichier rempli, non.
 
 ### Rotation des secrets
 
@@ -61,7 +61,7 @@ La rotation **casse le déterminisme** — la même valeur source atterrira sur 
 
 ### Compte source en lecture seule
 
-Voir la [référence `.env`](/fr/docs/env/#créer-un-compte-en-lecture-seule-sur-la-source) pour les grants SQL.
+Voir la [référence `.env.brume`](/fr/docs/env/#créer-un-compte-en-lecture-seule-sur-la-source) pour les grants SQL.
 
 ## Compatibilité PostgreSQL
 
@@ -136,6 +136,14 @@ warning: path `$.contact.phone` never resolved across 12,498 rows of `users.meta
 ```
 
 Le chemin est faux ou n'existe dans aucune ligne de la colonne. Inspectez quelques lignes manuellement et ajustez le chemin. Brume continue le traitement — c'est un avertissement, pas une erreur fatale.
+
+### `Template secret still in use`
+
+```
+warning: BRUME_HMAC_SECRET matches the value shipped by `brume init` — replace it before running `execute`
+```
+
+Introduit avec Brume 1.6. Le run n'est pas bloqué, mais toute pseudonymisation produite avec le placeholder est réversible par quiconque a accès aux sources de Brume. Générez une valeur à haute entropie (par ex. `openssl rand -base64 48` pour `BRUME_HMAC_SECRET`, `openssl rand -hex 24` pour `BRUME_FPE_KEY`) et faites tourner le `.env.brume`.
 
 ### `Uncovered PII columns` (depuis `brume plan`)
 

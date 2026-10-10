@@ -7,10 +7,12 @@ Ce tutoriel vous guide à travers le flux complet de Brume sur un exemple minima
 
 ## 1. Configurer les secrets et les connexions
 
-Copiez l'exemple `.env` à côté de votre `brume.yml` :
+Générez un template `.env.brume` à côté de votre `brume.yml`. Choisissez le type de sink qui correspond à votre cible :
 
 ```bash
-cp .env.example .env
+brume init jdbc    # cible = une base Postgres live
+# ou
+brume init dump    # cible = un fichier .sql
 ```
 
 Renseignez les deux secrets et les chaînes de connexion source et cible :
@@ -35,7 +37,9 @@ BRUME_TARGET_USER=app
 BRUME_TARGET_PASSWORD=...
 ```
 
-Voir la [référence `.env`](/fr/docs/env/) pour la liste complète des variables.
+Les deux valeurs `BRUME_*_SECRET` / `BRUME_*_KEY` générées par `brume init` sont des placeholders — Brume 1.6 émet un warning à chaque exécution si elles sont laissées intactes. Remplacez-les par des valeurs à haute entropie avant `brume execute`.
+
+Voir la [référence `.env.brume`](/fr/docs/env/) pour la liste complète des variables.
 
 ## 2. Écrire un `brume.yml` minimal
 

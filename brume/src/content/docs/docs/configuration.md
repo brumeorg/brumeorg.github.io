@@ -3,7 +3,7 @@ title: brume.yml reference
 description: The full schema of the brume.yml configuration file — extraction, anonymization, linked_columns, JSONB paths.
 ---
 
-`brume.yml` is the single declarative file that describes **what** to extract and **how** to transform it. It lives next to your `.env` and is loaded automatically by every Brume subcommand.
+`brume.yml` is the single declarative file that describes **what** to extract and **how** to transform it. It lives next to your `.env.brume` and is loaded automatically by every Brume subcommand.
 
 ## Top-level structure
 
@@ -210,4 +210,4 @@ anonymization:
 ## Next
 
 - [**CLI commands**](/docs/cli/) — how to run `brume plan`, `execute`, `dry-run`.
-- [**`.env` variables**](/docs/env/) — connections and secrets.
+- [**`.env.brume` variables**](/docs/env/) — connections and secrets.

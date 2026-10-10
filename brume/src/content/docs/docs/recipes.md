@@ -142,7 +142,7 @@ Run Brume independently on each service's database with the **same `BRUME_HMAC_S
 
 **Problem.** Your DPO wants to review a pseudonymized export offline before any production rollout.
 
-**`.env`.**
+**`.env.brume`.** Generate it with `brume init dump`, then fill in:
 
 ```bash
 BRUME_TARGET_FILE=./out/pseudonymized.sql

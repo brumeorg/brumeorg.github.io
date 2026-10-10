@@ -3,7 +3,7 @@ title: CLI commands
 description: Every Brume subcommand, every flag, every exit code.
 ---
 
-Brume exposes a small set of subcommands. All of them read the same `.env` and `brume.yml` from the current working directory.
+Brume exposes a small set of subcommands. All of them read the same `.env.brume` and `brume.yml` from the current working directory.
 
 ## Global flags
 
@@ -15,6 +15,26 @@ Available on every subcommand:
 | `-q` · `--quiet` | ERROR-level logs only (the final report is always visible on stdout) |
 | `--json` | Machine-readable output on stdout, JSON logs on stderr |
 | `-h` · `--help` | Show help for the command |
+
+## `brume init`
+
+Scaffolds a `.env.brume` template in the current directory, pre-filled for a given **sink type**. The argument selects which target block to write.
+
+```bash
+brume init dump    # sink = SQL dump file
+brume init jdbc    # sink = PostgreSQL target over JDBC
+```
+
+| Argument | Generated sink block |
+|---|---|
+| `dump` | `BRUME_TARGET_FILE` / `BRUME_TARGET_FILE_COMPRESS` — writes a `.sql` dump |
+| `jdbc` | `BRUME_TARGET_HOST` / `BRUME_TARGET_DB` / … — writes to a live Postgres target |
+
+Both templates also include the secret and source blocks. Edit the generated `.env.brume`, then run `brume diag` to verify the setup. The file replaces the legacy `.env` convention — every other subcommand reads `.env.brume` exclusively.
+
+:::caution
+`brume init` refuses to overwrite an existing `.env.brume`. Delete or rename the existing file first if you really want to regenerate it.
+:::
 
 ## `brume plan`
 
@@ -44,7 +64,7 @@ Use it as the final config validation before `execute`.
 
 ## `brume execute`
 
-**Runs the actual pseudonymization.** Reads from the source, transforms, writes to the target (database or `.sql` file depending on `.env`).
+**Runs the actual pseudonymization.** Reads from the source, transforms, writes to the target (database or `.sql` file depending on `.env.brume`).
 
 ```bash
 brume execute
@@ -87,7 +107,7 @@ Useful as the first command after installing Brume on a new machine, and as a CI
 | Code | Meaning |
 |---|---|
 | `0` | Success |
-| `1` | Configuration error (invalid `brume.yml`, missing `.env` variable) |
+| `1` | Configuration error (invalid `brume.yml`, missing `.env.brume` variable) |
 | `2` | Runtime error (connection refused, query failed, write failed) |
 | `3` | Validation failure (uncovered PII column with `--strict`, k-anonymity threshold breached) |
 
@@ -96,5 +116,5 @@ These are stable across versions and safe to use in CI gates.
 ## Next
 
 - [**`brume.yml` reference**](/docs/configuration/) — every key.
-- [**`.env` reference**](/docs/env/) — every variable.
+- [**`.env.brume` reference**](/docs/env/) — every variable.
 - [**Recipes**](/docs/recipes/) — copy-paste workflows.

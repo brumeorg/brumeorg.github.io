@@ -142,7 +142,7 @@ Exécutez Brume indépendamment sur la base de chaque service avec le **même `B
 
 **Problème.** Votre DPO veut revoir un export pseudonymisé hors ligne avant tout déploiement en production.
 
-**`.env`.**
+**`.env.brume`.** Générez-le avec `brume init dump`, puis renseignez :
 
 ```bash
 BRUME_TARGET_FILE=./out/pseudonymized.sql

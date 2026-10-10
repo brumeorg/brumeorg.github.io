@@ -28,7 +28,7 @@ The exhaustive doc for every flag, every key, every variable.
 
 - [**`brume.yml`**](/docs/configuration/) — full schema of the configuration file.
 - [**CLI commands**](/docs/cli/) — every subcommand, every flag, exit codes.
-- [**`.env` variables**](/docs/env/) — secrets, connection strings, runtime options.
+- [**`.env.brume` variables**](/docs/env/) — secrets, connection strings, runtime options.
 
 ## Use it well
 
