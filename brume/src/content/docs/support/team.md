@@ -9,7 +9,7 @@ For questions that don't fit in a public issue, you can reach the maintainers di
 
 ### Team contact
 
-brume.org@gmail.com
+contact@brume.software
 
 ---
 

@@ -9,7 +9,7 @@ Pour les questions qui ne rentrent pas dans une issue publique, vous pouvez join
 
 ### Contact de l'équipe
 
-brume.org@gmail.com
+contact@brume.software
 
 ---
 
