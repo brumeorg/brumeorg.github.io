@@ -36,6 +36,33 @@ Both templates also include the secret and source blocks. Edit the generated `.e
 `brume init` refuses to overwrite an existing `.env.brume`. Delete or rename the existing file first if you really want to regenerate it.
 :::
 
+## `brume scan`
+
+**Standalone PII discovery.** Scans the source database and lists every column that looks like personally identifiable information, grouped by semantic type. Unlike `brume plan`, `scan` doesn't require a `brume.yml` — point it at a source and it tells you what PII lives in your schema.
+
+```bash
+brume scan
+```
+
+Output: one entry per column, with the detected semantic type and the heuristic that matched (column name, regex on sampled values, or both).
+
+**PII categories detected:**
+
+| Category | Detected on |
+|---|---|
+| `EMAIL` | Columns named `email`, `*_email`, `mail`, `e_mail` — and values matching the RFC 5322 shape on a sampled subset. |
+| `FIRST_NAME` | Columns named `first_name`, `firstname`, `given_name`, `prenom`. |
+| `LAST_NAME` | Columns named `last_name`, `lastname`, `surname`, `family_name`, `nom`. |
+| `PHONE` | Columns named `phone`, `*_phone`, `mobile`, `tel`, `telephone`, `msisdn` — and values matching E.164 or common national formats. |
+| `ADDRESS` | Columns named `address`, `street`, `postal_code`, `zip`, `city`, `country` (and their localized variants). |
+| `IBAN` | Columns named `iban`, `bank_account`, `account_number` — and values matching the IBAN check-digit algorithm (ISO 13616). |
+| `IP_ADDRESS` | Columns named `ip`, `ip_address`, `client_ip`, `remote_addr` — and values matching IPv4 or IPv6. |
+| `JSONB` | `jsonb` / `json` columns whose sampled documents contain nested fields that match any of the above heuristics. |
+
+The scan is **read-only** and opens a single source connection. It samples at most a few thousand rows per table — the exact budget is tunable via `BRUME_SCAN_SAMPLE_SIZE` (see [`.env.brume` reference](/docs/env/)).
+
+Use `brume scan` as the **first step** when onboarding a new database: it gives you the raw material to write `brume.yml`. Then run `brume plan` to confirm every detected column is covered by a rule.
+
 ## `brume plan`
 
 **Read-only audit.** Estimates row volumes, walks foreign keys up to `fk_depth`, and lists **columns that look like PII but aren't covered by any rule**.

@@ -36,6 +36,33 @@ Les deux templates incluent aussi les blocs secrets et source. Éditez le `.env.
 `brume init` refuse d'écraser un `.env.brume` existant. Supprimez ou renommez le fichier existant si vous voulez vraiment le régénérer.
 :::
 
+## `brume scan`
+
+**Découverte de PII autonome.** Scanne la base source et liste chaque colonne qui ressemble à une donnée personnelle, groupée par type sémantique. Contrairement à `brume plan`, `scan` ne requiert pas de `brume.yml` — pointez-le sur une source et il vous dit quelles PII vivent dans votre schéma.
+
+```bash
+brume scan
+```
+
+Sortie : une entrée par colonne, avec le type sémantique détecté et l'heuristique qui a matché (nom de colonne, regex sur un échantillon de valeurs, ou les deux).
+
+**Catégories de PII détectées :**
+
+| Catégorie | Détectée sur |
+|---|---|
+| `EMAIL` | Colonnes nommées `email`, `*_email`, `mail`, `e_mail` — et valeurs correspondant à la forme RFC 5322 sur un échantillon. |
+| `FIRST_NAME` | Colonnes nommées `first_name`, `firstname`, `given_name`, `prenom`. |
+| `LAST_NAME` | Colonnes nommées `last_name`, `lastname`, `surname`, `family_name`, `nom`. |
+| `PHONE` | Colonnes nommées `phone`, `*_phone`, `mobile`, `tel`, `telephone`, `msisdn` — et valeurs correspondant à E.164 ou aux formats nationaux courants. |
+| `ADDRESS` | Colonnes nommées `address`, `street`, `postal_code`, `zip`, `city`, `country` (et leurs variantes localisées). |
+| `IBAN` | Colonnes nommées `iban`, `bank_account`, `account_number` — et valeurs vérifiant les clés de contrôle IBAN (ISO 13616). |
+| `IP_ADDRESS` | Colonnes nommées `ip`, `ip_address`, `client_ip`, `remote_addr` — et valeurs correspondant à IPv4 ou IPv6. |
+| `JSONB` | Colonnes `jsonb` / `json` dont les documents échantillonnés contiennent des champs imbriqués matchant une des heuristiques ci-dessus. |
+
+Le scan est **en lecture seule** et ouvre une seule connexion à la source. Il échantillonne au plus quelques milliers de lignes par table — le budget exact est réglable via `BRUME_SCAN_SAMPLE_SIZE` (voir la [référence `.env.brume`](/fr/docs/env/)).
+
+Utilisez `brume scan` comme **première étape** lors de l'onboarding d'une nouvelle base : il vous donne la matière brute pour écrire `brume.yml`. Puis exécutez `brume plan` pour confirmer que chaque colonne détectée est couverte par une règle.
+
 ## `brume plan`
 
 **Audit en lecture seule.** Estime les volumes de lignes, parcourt les clés étrangères jusqu'à `fk_depth`, et liste les **colonnes qui ressemblent à des PII mais ne sont couvertes par aucune règle**.
