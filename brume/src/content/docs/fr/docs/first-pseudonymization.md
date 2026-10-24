@@ -47,7 +47,7 @@ Commencez avec une seule table — `users` — et pseudonymisez l'email, le tél
 
 ```yaml
 extraction:
-  fk_depth: 3
+  fk_depth: 1         # rayon FK autour des lignes sélectionnées — commencez petit
   tables:
     - table: users
 
@@ -71,7 +71,7 @@ Voir la [référence `brume.yml`](/fr/docs/configuration/) pour le schéma compl
 
 ## 3. Planifier avant d'exécuter — `brume plan`
 
-`plan` est une commande qui estime les volumes de lignes, parcourt les clés étrangères jusqu'à `fk_depth`, et surtout liste les **colonnes PII non couvertes par aucune règle**. Elle n'extrait jamais rien.
+`plan` compte les lignes que recevra chaque table dans le rayon `fk_depth` — exactement ce que copiera `execute` — et surtout liste les **colonnes PII non couvertes par aucune règle**. Il n'écrit jamais rien.
 
 ```bash
 brume plan

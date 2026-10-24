@@ -9,11 +9,11 @@ Each recipe is a self-contained workflow: a problem statement, the configuration
 
 **Problem.** A bug in production references `orders.id = 982331`. You want a local copy that includes that order, its `users`, its `order_items`, and nothing else.
 
-**Configuration.**
+**Configuration.** `fk_depth: 1` copies the rows one foreign-key hop away from the order — its user, its items — and, by default, every parent those rows need.
 
 ```yaml
 extraction:
-  fk_depth: 3
+  fk_depth: 1
   tables:
     - table: orders
       filter: "id = 982331"
@@ -145,9 +145,10 @@ Run Brume independently on each service's database with the **same `BRUME_HMAC_S
 **`.env.brume`.** Generate it with `brume init dump`, then fill in:
 
 ```bash
-BRUME_TARGET_FILE=./out/pseudonymized.sql
-BRUME_TARGET_FILE_COMPRESS=gzip
-# Postgres TARGET_* variables are ignored when TARGET_FILE is set
+BRUME_SINK_TYPE=DUMP
+BRUME_SINK_OUTPUT_PATH=./out/pseudonymized.sql.gz
+BRUME_SINK_COMPRESSION=GZIP     # NONE | GZIP | ZSTD
+# The BRUME_TARGET_* variables are ignored with the DUMP sink
 ```
 
 **Run.**
@@ -172,7 +173,7 @@ gunzip -c pseudonymized.sql.gz | psql -h ... -U ... -d ...
 
 ```yaml
 extraction:
-  fk_depth: 4
+  fk_depth: 1
   tables:
     - table: tenants
       filter: "id = 42"
@@ -182,7 +183,7 @@ extraction:
       filter: "tenant_id = 42"
 ```
 
-Apply the `tenant_id = 42` filter on **every root table** in the tenant scope. FK traversal pulls dependents automatically.
+Apply the `tenant_id = 42` filter on **every root table** in the tenant scope, and keep `fk_depth` low. `fk_depth` is a radius in both directions: from a row shared by several tenants (a plan, a country, a product), one more hop down reaches the rows of **other tenants**. Check the per-table counts of `brume plan` before running `execute`.
 
 ---
 

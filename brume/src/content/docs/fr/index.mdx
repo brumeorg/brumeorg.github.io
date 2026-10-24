@@ -89,8 +89,8 @@ import TerminalAlignPill from '../../../components/TerminalAlignPill.astro';
       <h3>Sécurisez vos données</h3>
       <p class="brume-feature-summary">Pseudonymisation au niveau colonne avec des transformations déterministes et clé-dépendantes.</p>
       <p class="brume-feature-detail">Appliquez la pseudonymisation au niveau colonne avec la stratégie qui correspond à chaque champ. FAKE pour des valeurs synthétiques réalistes, MASK pour des dévoilements partiels, HASH pour un hachage à sens unique, NULLIFY
-           pour supprimer les données sensibles, ou FPE_ID / FPE_UUID pour un chiffrement préservant le format des identifiants. Chaque transformation est déterministe et indexée par votre hmac-secret et votre fpe-key :
-            même entrée + même secret = même sortie, à chaque fois. Deux exécutions produisent des résultats identiques — vos tests restent stables, vos sessions de debug restent cohérentes entre les reconstructions.</p>
+           pour supprimer les données sensibles, FPE_ID / FPE_UUID pour un chiffrement préservant le format des identifiants, ou DATE_SHIFT pour décaler les dates en gardant leur distribution. Chaque transformation est déterministe et indexée par votre hmac-secret et votre fpe-key :
+            même entrée + même secret = même sortie, à chaque fois, dans toutes les versions d'une même version majeure. Deux exécutions produisent des résultats identiques — vos tests restent stables, vos sessions de debug restent cohérentes entre les reconstructions.</p>
     </div>
   </li>
 
@@ -120,8 +120,8 @@ import TerminalAlignPill from '../../../components/TerminalAlignPill.astro';
     <div class="brume-feature-body">
       <h3>Ne prenez que ce qu'il vous faut</h3>
       <p class="brume-feature-summary">Filtres au niveau ligne avec traversée automatique des FK — un sous-ensemble autonome de vos données.</p>
-      <p class="brume-feature-detail">Définissez des filtres au niveau ligne sur n'importe quelle table (created_at &gt;= '2025-01-01', tenant_id = 42…) et laissez Brume traverser automatiquement les clés étrangères jusqu'à fk_depth niveaux. Parents et
-            enfants. Vous obtenez un sous-ensemble autonome, cohérent au niveau FK, de vos données de production, limité exactement à ce dont votre session de debug ou votre environnement de test a besoin. Rien de plus, rien de moins.</p>
+      <p class="brume-feature-detail">Définissez des filtres au niveau ligne sur n'importe quelle table (created_at &gt;= '2025-01-01', tenant_id = 42…) et laissez Brume copier chaque ligne située à au plus fk_depth sauts de clé étrangère, vers les parents comme vers les
+            enfants — plus les parents dont ces lignes ont besoin. Vous obtenez un sous-ensemble autonome, cohérent au niveau FK, de vos données de production, limité exactement à ce dont votre session de debug ou votre environnement de test a besoin. Rien de plus, rien de moins.</p>
     </div>
   </li>
 

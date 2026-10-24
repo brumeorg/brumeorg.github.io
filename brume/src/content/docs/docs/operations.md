@@ -19,14 +19,9 @@ Diminishing returns kick in past `2 × physical cores`. Watch your source databa
 
 ### `fk_depth`
 
-Lower `fk_depth` extracts less data. If your bug is reproducible at depth 2, don't pay for depth 4.
+`fk_depth` is a radius around the rows you select, counted in foreign-key hops towards parents **and** children: each hop can multiply the rows copied. Start with `1`, check the per-table counts of `brume plan`, and raise it only when a test needs rows that are missing.
 
-A common debug-time pattern:
-
-```bash
-BRUME_FK_DEPTH_OVERRIDE=1 brume execute   # smoke run
-BRUME_FK_DEPTH_OVERRIDE=3 brume execute   # full run
-```
+On a large schema, `orphan_policy: ALLOW_ORPHANS` keeps the radius strict instead of copying every parent the copied rows need — at the cost of dangling foreign keys (see [`orphan_policy`](/docs/configuration/#extractionorphan_policy)).
 
 ### Memory
 
@@ -58,6 +53,10 @@ Rotation **breaks determinism** — the same source value will land on a differe
 3. Rotate the secrets.
 4. Re-run `brume execute` on all downstream environments.
 5. Notify users that previous fake IDs are no longer valid.
+
+### Upgrading to 2.0
+
+Brume 2.0 changes some pseudonymized values compared with 1.x — fake phone numbers, fakes on `UNIQUE` columns, timestamps in `.sql` dumps (see [Determinism and versions](/docs/how-it-works/#determinism-and-versions)). Like a secret rotation, plan the upgrade as a cutover: re-run `brume execute` on every downstream environment you join or compare.
 
 ### Read-only source account
 
@@ -152,13 +151,29 @@ Introduced in Brume 1.6. The run isn't blocked, but any pseudonymization produce
 - Add a rule in `brume.yml`, or
 - Confirm explicitly with a `strategy: KEEP` rule to document the intent.
 
-### `FK depth exceeded`
+### `[ORPHANS]` (with `orphan_policy: ALLOW_ORPHANS`)
 
 ```
-warning: table `events` reached at depth 5, exceeds fk_depth=3 — not extracted
+[ORPHANS] 13 row(s) of order_items reference 5 row(s) of products outside fk_depth via product_id
 ```
 
-The table isn't included in the subset. Either bump `fk_depth` or add the table as an additional root in `extraction.tables`.
+Copied rows reference rows beyond the `fk_depth` radius, which are not copied. Joins on that foreign key lose them, and re-creating the constraint on the target fails. Raise `fk_depth`, add the referenced table to `extraction.tables`, or switch back to the default `orphan_policy: KEEP_PARENTS`.
+
+### `[UNIQUE_COLLISION]`
+
+```
+[UNIQUE_COLLISION] public.holiday : 14 ligne(s) non écrite(s) — leur valeur pseudonymisée entre en collision avec une autre ligne sur une contrainte UNIQUE
+```
+
+Two rows got the same pseudonymized value on a `UNIQUE` column (here a `DATE_SHIFT` on dense dates). The run goes on and the lost rows are counted per table in the report. To keep every row, use `HASH`, `FPE_ID` or `FPE_UUID` on that column — see [UNIQUE columns and collisions](/docs/strategies/#unique-columns-and-collisions).
+
+### `Column '…' is UNIQUE in the source schema but …` (from `brume plan`)
+
+`MASK`, or `FAKE` with `type: DATE`, on a `UNIQUE` column: almost every value would collide, so `plan` refuses the configuration (`CONFIG_SCHEMA_UNIQUE_NOT_INJECTIVE`, exit code `1`). Pick `HASH`, `FPE_ID`, `FPE_UUID`, or `FAKE` with a name / email type.
+
+### `pg_dump: error: no matching schemas were found`
+
+`BRUME_SCHEMA` must be the schema name exactly as stored — case, accents and spaces included, without quotes.
 
 ## Next
 

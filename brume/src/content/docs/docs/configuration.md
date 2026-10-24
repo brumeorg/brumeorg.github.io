@@ -9,7 +9,8 @@ description: The full schema of the brume.yml configuration file — extraction,
 
 ```yaml
 extraction:        # what to copy from the source
-  fk_depth: 3
+  fk_depth: 1
+  orphan_policy: KEEP_PARENTS
   tables:
     - table: ...
       filter: ...
@@ -33,14 +34,37 @@ Controls **what data** is read from the source.
 
 ### `extraction.fk_depth`
 
-Maximum number of foreign-key levels Brume traverses automatically — both **parents** (the row a FK points to) and **children** (rows that point to the current row).
+A **radius**: a row is copied when it lies at most `fk_depth` foreign-key hops away from a row selected by `extraction.tables`, counting hops towards **parents** (the row a FK points to) and towards **children** (rows that point to it) alike.
 
 ```yaml
 extraction:
-  fk_depth: 3
+  fk_depth: 1
 ```
 
-Higher values produce a more complete subset but extract more rows. Typical values: `2–4`.
+With `orders` filtered on 2025:
+
+| `fk_depth` | Rows copied |
+|---|---|
+| `1` | the 2025 orders, their `users`, their `order_items` |
+| `2` | + the other orders of those users (even outside the filter), the `products` of the items |
+| `3` | + the items of those other orders, … |
+
+Each hop can pull many more rows on a real database: **start with `1`** and raise it only when needed. `brume plan` shows the exact row count before anything is written.
+
+### `extraction.orphan_policy`
+
+What happens at the edge of the radius, when a copied row references a row beyond it.
+
+| Value | Behavior |
+|---|---|
+| `KEEP_PARENTS` (default) | The parents of every copied row are copied too, whatever their distance (upward only — Brume never descends again from them). The target never holds a dangling FK. |
+| `ALLOW_ORPHANS` | The radius is strict. References to rows beyond it are kept as-is: the run logs `[ORPHANS] …` per FK and lists them in `orphanReferences` (JSON report). Joins lose those rows, and re-creating the FK constraints on the target fails. |
+
+```yaml
+extraction:
+  fk_depth: 1
+  orphan_policy: ALLOW_ORPHANS
+```
 
 ### `extraction.tables`
 
@@ -58,10 +82,32 @@ Each entry accepts:
 
 | Key | Required | Description |
 |---|---|---|
-| `table` | yes | Table name (qualified with schema if not `public`, e.g. `analytics.events`) |
+| `table` | yes | Table name in the schema set by `BRUME_SCHEMA`, written exactly as stored (see [Table and column names](#table-and-column-names)) |
 | `filter` | no | Raw SQL `WHERE` clause applied to this table only |
 
 The `filter` is injected as-is into the extraction query — it must be **valid SQL** for your Postgres version. Quote literals correctly.
+
+### Table and column names
+
+Write table and column names **exactly as stored in PostgreSQL** — case, accents and spaces included, **without SQL quotes**:
+
+```yaml
+- table: fiche client      # stored as "fiche client"
+  columns:
+    - name: prénom
+      strategy: FAKE
+      type: FIRST_NAME
+    - name: nom de famille
+      strategy: FAKE
+      type: LAST_NAME
+```
+
+Any legal PostgreSQL name is accepted (up to 63 bytes in UTF-8). Brume quotes it in every SQL statement it generates.
+
+### Partitioned tables and views
+
+- A **partitioned table** counts as one table: declare filters and rules on the partitioned table (`payment`), never on its partitions. Brume reads and writes through it and PostgreSQL routes each row to its partition. Foreign keys declared partition by partition are treated as foreign keys of the partitioned table.
+- **Views, materialized views and foreign tables** are not tables: they can't be listed in `brume.yml` and `brume scan` ignores them. Their definitions are still recreated on the target by the schema copy.
 
 ## `anonymization`
 
@@ -116,11 +162,11 @@ The column name to transform.
 
 #### `columns[].strategy`
 
-One of: `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `KEEP`. See [strategies](/docs/strategies/).
+One of: `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `DATE_SHIFT`, `KEEP`. See [strategies](/docs/strategies/).
 
 #### `columns[].type`
 
-Required when `strategy` is `FAKE` or `MASK`. One of: `EMAIL`, `FIRST_NAME`, `LAST_NAME`, `PHONE`, `IBAN`, `ADDRESS`, `IP_ADDRESS`, `JSONB`. See [semantic types](/docs/semantic-types/).
+Required when `strategy` is `FAKE` or `MASK`. One of: `EMAIL`, `FIRST_NAME`, `LAST_NAME`, `PHONE`, `IBAN`, `ADDRESS`, `IP_ADDRESS`, `DATE`, `JSONB`. See [semantic types](/docs/semantic-types/).
 
 #### `columns[].json_paths`
 
@@ -152,17 +198,19 @@ Brume validates the configuration at startup and refuses to run on:
 
 - A column with `strategy: FAKE` or `MASK` without a `type`.
 - A column with `strategy: NULLIFY` declared on a `NOT NULL` column.
+- `MASK`, or `FAKE` with `type: DATE`, on a `UNIQUE` column — their values would collide (see [UNIQUE columns and collisions](/docs/strategies/#unique-columns-and-collisions)).
+- `FAKE` on columns linked by a foreign key without a `linked_columns` entry covering them.
 - A `type: JSONB` without `json_paths`.
 - A table referenced in `anonymization.tables` that isn't reachable from `extraction.tables` (you'd be transforming nothing).
 - A `linked_columns` entry referencing a column also declared with a different strategy.
 
-Run [`brume dry-run`](/docs/cli/#brume-dry-run) to catch all of these without touching the target.
+`brume plan` reports these before anything is written. Run [`brume dry-run`](/docs/cli/#brume-dry-run) to exercise the full pipeline without touching the target.
 
 ## Full example
 
 ```yaml
 extraction:
-  fk_depth: 3
+  fk_depth: 1
   tables:
     - table: orders
       filter: "created_at >= '2025-01-01'"

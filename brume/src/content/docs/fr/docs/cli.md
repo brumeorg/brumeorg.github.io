@@ -27,7 +27,7 @@ brume init jdbc    # sink = cible PostgreSQL via JDBC
 
 | Argument | Bloc sink généré |
 |---|---|
-| `dump` | `BRUME_TARGET_FILE` / `BRUME_TARGET_FILE_COMPRESS` — écrit un dump `.sql` |
+| `dump` | `BRUME_SINK_TYPE=DUMP` / `BRUME_SINK_OUTPUT_PATH` / `BRUME_SINK_COMPRESSION` — écrit un dump `.sql` |
 | `jdbc` | `BRUME_TARGET_HOST` / `BRUME_TARGET_DB` / … — écrit vers une cible Postgres live |
 
 Les deux templates incluent aussi les blocs secrets et source. Éditez le `.env.brume` généré, puis exécutez `brume diag` pour valider la configuration. Ce fichier remplace la convention `.env` historique — toutes les autres sous-commandes lisent exclusivement `.env.brume`.
@@ -38,34 +38,28 @@ Les deux templates incluent aussi les blocs secrets et source. Éditez le `.env.
 
 ## `brume scan`
 
-**Découverte de PII autonome.** Scanne la base source et liste chaque colonne qui ressemble à une donnée personnelle, groupée par type sémantique. Contrairement à `brume plan`, `scan` ne requiert pas de `brume.yml` — pointez-le sur une source et il vous dit quelles PII vivent dans votre schéma.
+**Génère un `brume.yml` pré-rempli à partir du schéma source.** Pointez `.env.brume` sur la source, lancez `scan`, relisez la proposition, puis lancez `brume plan`.
 
 ```bash
-brume scan
+brume scan           # demande avant d'écraser un brume.yml existant
+brume scan --force   # mode CI — écrase sans demander
 ```
 
-Sortie : une entrée par colonne, avec le type sémantique détecté et l'heuristique qui a matché (nom de colonne, regex sur un échantillon de valeurs, ou les deux).
+Le scan lit **uniquement les noms et types de colonnes** — il ne lit jamais vos données. Il est en lecture seule sur la source.
 
-**Catégories de PII détectées :**
+- Les **colonnes PII** sont repérées par leur nom et reçoivent une règle : `email`, `mail`, `courriel` → `FAKE EMAIL` ; `phone`, `mobile`, `tel`, `portable` → `MASK PHONE` ; `first_name`, `prenom` → `FAKE FIRST_NAME` ; `last_name`, `name`, `nom` → `FAKE LAST_NAME` ; `address`, `adresse`, `street`, `rue` → `FAKE ADDRESS` ; `city`, `ville`, `zip`, `postal` → `MASK ADDRESS` ; `ip_address`, `adresse_ip` → `MASK IP_ADDRESS` ; `iban`, `bic` → `HASH` ; `password`, `mot_de_passe`, `token`, `ssn`, `num_secu` → `HASH` ; `birth`, `dob`, `naissance` → `FAKE DATE` ; `gender`, `sexe` → `NULLIFY`.
+- **Accents, espaces et tirets n'empêchent pas la détection** : `Prénom` est reconnu comme un prénom, `mot de passe` comme un mot de passe, `e-mail` comme un email.
+- Les **clés primaires** passent en `FPE_ID` (numérique) ou `FPE_UUID` (uuid). Les **clés étrangères** sont volontairement omises — elles héritent à l'exécution de la stratégie de la clé qu'elles référencent.
+- Les **colonnes temporelles** ne reçoivent jamais de stratégie texte : `date_derniere_maj_password` est ignorée plutôt que hachée dans un timestamp.
+- Les **vues, vues matérialisées, tables étrangères et partitions** sont ignorées : seules les tables sont proposées, une table partitionnée une seule fois.
+- Les noms sont écrits tels qu'ils sont stockés, entre guillemets YAML si nécessaire (`- name: "nom de famille"`).
+- Le bloc `extraction.tables` est un squelette à compléter : quelles lignes copier est un choix métier que le schéma ne peut pas déduire.
 
-| Catégorie | Détectée sur |
-|---|---|
-| `EMAIL` | Colonnes nommées `email`, `*_email`, `mail`, `e_mail` — et valeurs correspondant à la forme RFC 5322 sur un échantillon. |
-| `FIRST_NAME` | Colonnes nommées `first_name`, `firstname`, `given_name`, `prenom`. |
-| `LAST_NAME` | Colonnes nommées `last_name`, `lastname`, `surname`, `family_name`, `nom`. |
-| `PHONE` | Colonnes nommées `phone`, `*_phone`, `mobile`, `tel`, `telephone`, `msisdn` — et valeurs correspondant à E.164 ou aux formats nationaux courants. |
-| `ADDRESS` | Colonnes nommées `address`, `street`, `postal_code`, `zip`, `city`, `country` (et leurs variantes localisées). |
-| `IBAN` | Colonnes nommées `iban`, `bank_account`, `account_number` — et valeurs vérifiant les clés de contrôle IBAN (ISO 13616). |
-| `IP_ADDRESS` | Colonnes nommées `ip`, `ip_address`, `client_ip`, `remote_addr` — et valeurs correspondant à IPv4 ou IPv6. |
-| `JSONB` | Colonnes `jsonb` / `json` dont les documents échantillonnés contiennent des champs imbriqués matchant une des heuristiques ci-dessus. |
-
-Le scan est **en lecture seule** et ouvre une seule connexion à la source. Il échantillonne au plus quelques milliers de lignes par table — le budget exact est réglable via `BRUME_SCAN_SAMPLE_SIZE` (voir la [référence `.env.brume`](/fr/docs/env/)).
-
-Utilisez `brume scan` comme **première étape** lors de l'onboarding d'une nouvelle base : il vous donne la matière brute pour écrire `brume.yml`. Puis exécutez `brume plan` pour confirmer que chaque colonne détectée est couverte par une règle.
+Le résultat est une **proposition** : la détection se fait sur les noms, relisez donc chaque règle — `nombre_commandes` contient `nom` et est proposé comme nom de famille.
 
 ## `brume plan`
 
-**Audit en lecture seule.** Estime les volumes de lignes, parcourt les clés étrangères jusqu'à `fk_depth`, et liste les **colonnes qui ressemblent à des PII mais ne sont couvertes par aucune règle**.
+**Audit en lecture seule.** Compte les lignes que recevra chaque table — celles du rayon `fk_depth`, exactement comme `execute` les copiera — et liste les **colonnes qui ressemblent à des PII mais ne sont couvertes par aucune règle**.
 
 ```bash
 brume plan
@@ -76,6 +70,8 @@ Sortie :
 - Un résumé volumétrique par table (lignes extraites, lignes parcourues via FK).
 - Une liste de colonnes non couvertes (détectées par heuristique : `email`, `phone`, `*_name`, `address`, `iban`, …).
 - Une liste d'avertissements de validation (incohérences nullable, types manquants, etc.).
+
+`plan` refuse les configurations qui ne peuvent qu'échouer — `NULLIFY` sur une colonne `NOT NULL`, `MASK` ou `FAKE` + `DATE` sur une colonne `UNIQUE` — avec le code de sortie `1`, avant toute écriture.
 
 **Toujours exécuter `plan` avant `execute`.** Il n'ouvre pas de connexion en écriture sur la cible.
 
@@ -97,7 +93,7 @@ brume dry-run
 brume execute
 ```
 
-Se termine avec un résumé par table et le temps total d'exécution.
+Se termine avec un résumé par table et le temps total d'exécution. Les lignes perdues sur une collision `UNIQUE` de leurs valeurs pseudonymisées n'arrêtent pas l'exécution (code de sortie `0`) : elles sont comptées par table et signalées — voir [Colonnes UNIQUE et collisions](/fr/docs/strategies/#colonnes-unique-et-collisions).
 
 :::caution
 `execute` écrit sur votre cible. Assurez-vous d'avoir revu la sortie de `plan` et exécuté `dry-run` au préalable.
@@ -133,12 +129,17 @@ Utile comme première commande après installation de Brume sur une nouvelle mac
 
 | Code | Signification |
 |---|---|
-| `0` | Succès |
-| `1` | Erreur de configuration (`brume.yml` invalide, variable `.env.brume` manquante) |
-| `2` | Erreur d'exécution (connexion refusée, requête échouée, écriture échouée) |
-| `3` | Échec de validation (colonne PII non couverte avec `--strict`, seuil k-anonymat dépassé) |
-
-Ces codes sont stables entre versions et sûrs à utiliser dans des garde-fous CI.
+| `0` | Succès — y compris une exécution qui a perdu des lignes sur une collision `UNIQUE` (signalée, pas fatale) |
+| `1` | Erreur de configuration (`brume.yml` invalide, variable `.env.brume` manquante, configuration refusée par `plan`) |
+| `2` | Erreur de connexion (source ou cible injoignable) — aussi une option ou un argument inconnu en ligne de commande |
+| `3` | `brume.max-target-rows` dépassé |
+| `4` | Erreur de schéma (par ex. échec de `pg_dump`) |
+| `5` | Erreur d'écriture (cible ou fichier de dump) |
+| `6` | Erreur de pseudonymisation |
+| `7` | Délai dépassé (requête ou exécution totale) |
+| `8` | `brume audit --anonymity` : politique non respectée |
+| `127` | Erreur inattendue |
+| `130` | Exécution annulée (SIGTERM / Ctrl-C) |
 
 ## Suite
 

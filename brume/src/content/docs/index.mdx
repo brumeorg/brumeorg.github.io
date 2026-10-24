@@ -89,8 +89,8 @@ import TerminalAlignPill from '../../components/TerminalAlignPill.astro';
       <h3>Secure your data</h3>
       <p class="brume-feature-summary">Column-level pseudonymization with deterministic, keyed transformations.</p>
       <p class="brume-feature-detail">Apply column-level pseudonymization with the strategy that fits each field. FAKE for realistic synthetic values, MASK for partial reveals, HASH for one-way hashing, NULLIFY
-           to drop sensitive data, or FPE_ID / FPE_UUID for format-preserving encryption of identifiers. Every transformation is deterministic and keyed by your hmac-secret and fpe-key:
-            same input + same secret = same output, every time. Two runs produce identical results — your tests stay stable, your debug sessions stay coherent across rebuilds.</p>
+           to drop sensitive data, FPE_ID / FPE_UUID for format-preserving encryption of identifiers, or DATE_SHIFT to move dates while keeping their distribution. Every transformation is deterministic and keyed by your hmac-secret and fpe-key:
+            same input + same secret = same output, every time, across all releases of a major version. Two runs produce identical results — your tests stay stable, your debug sessions stay coherent across rebuilds.</p>
     </div>
   </li>
 
@@ -120,8 +120,8 @@ import TerminalAlignPill from '../../components/TerminalAlignPill.astro';
     <div class="brume-feature-body">
       <h3>Take only what you need</h3>
       <p class="brume-feature-summary">Row-level filters with automatic FK traversal — a self-contained subset of your data.</p>
-      <p class="brume-feature-detail">Define row-level filters on any table (created_at >= '2025-01-01', tenant_id = 42…) and let Brume traverse foreign keys automatically up to fk_depth levels. Both parents and
-            children. You get a self-contained, FK-coherent subset of your production data, scoped to exactly what your debug session or test environment needs. Nothing more, nothing less.</p>
+      <p class="brume-feature-detail">Define row-level filters on any table (created_at >= '2025-01-01', tenant_id = 42…) and let Brume copy every row within fk_depth foreign-key hops of them, towards parents and
+            children — plus the parents those rows need. You get a self-contained, FK-coherent subset of your production data, scoped to exactly what your debug session or test environment needs. Nothing more, nothing less.</p>
     </div>
   </li>
 

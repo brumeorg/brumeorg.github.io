@@ -9,7 +9,8 @@ description: Le schéma complet du fichier de configuration brume.yml — extrac
 
 ```yaml
 extraction:        # quoi copier depuis la source
-  fk_depth: 3
+  fk_depth: 1
+  orphan_policy: KEEP_PARENTS
   tables:
     - table: ...
       filter: ...
@@ -33,14 +34,37 @@ Contrôle **quelles données** sont lues depuis la source.
 
 ### `extraction.fk_depth`
 
-Nombre maximum de niveaux de clés étrangères que Brume traverse automatiquement — à la fois **parents** (la ligne pointée par une FK) et **enfants** (les lignes qui pointent vers la ligne courante).
+Un **rayon** : une ligne est copiée quand elle se trouve à au plus `fk_depth` sauts de clé étrangère d'une ligne sélectionnée par `extraction.tables`, en comptant aussi bien les sauts vers les **parents** (la ligne pointée par une FK) que vers les **enfants** (les lignes qui pointent vers elle).
 
 ```yaml
 extraction:
-  fk_depth: 3
+  fk_depth: 1
 ```
 
-Des valeurs plus élevées produisent un sous-ensemble plus complet mais extraient plus de lignes. Valeurs typiques : `2–4`.
+Avec `orders` filtrée sur 2025 :
+
+| `fk_depth` | Lignes copiées |
+|---|---|
+| `1` | les commandes 2025, leurs `users`, leurs `order_items` |
+| `2` | + les autres commandes de ces utilisateurs (même hors filtre), les `products` des lignes de commande |
+| `3` | + les lignes de ces autres commandes, … |
+
+Chaque saut peut ramener beaucoup plus de lignes sur une vraie base : **commencez à `1`** et n'augmentez qu'en cas de besoin. `brume plan` donne le nombre exact de lignes avant toute écriture.
+
+### `extraction.orphan_policy`
+
+Ce qui se passe au bord du rayon, quand une ligne copiée référence une ligne au-delà.
+
+| Valeur | Comportement |
+|---|---|
+| `KEEP_PARENTS` (défaut) | Les parents de chaque ligne copiée sont copiés aussi, quelle que soit leur distance (en remontant seulement — Brume ne redescend jamais depuis eux). La cible ne contient jamais de FK qui ne pointe sur rien. |
+| `ALLOW_ORPHANS` | Le rayon est strict. Les références au-delà sont gardées telles quelles : l'exécution journalise `[ORPHANS] …` par FK et les liste dans `orphanReferences` (rapport JSON). Les jointures perdent ces lignes, et recréer les contraintes FK sur la cible échoue. |
+
+```yaml
+extraction:
+  fk_depth: 1
+  orphan_policy: ALLOW_ORPHANS
+```
 
 ### `extraction.tables`
 
@@ -58,10 +82,32 @@ Chaque entrée accepte :
 
 | Clé | Requise | Description |
 |---|---|---|
-| `table` | oui | Nom de la table (qualifié avec le schéma si différent de `public`, par ex. `analytics.events`) |
+| `table` | oui | Nom de la table dans le schéma défini par `BRUME_SCHEMA`, écrit exactement comme il est stocké (voir [Noms de tables et de colonnes](#noms-de-tables-et-de-colonnes)) |
 | `filter` | non | Clause SQL `WHERE` brute appliquée uniquement à cette table |
 
 Le `filter` est injecté tel quel dans la requête d'extraction — il doit être du **SQL valide** pour votre version de Postgres. Quotez correctement les littéraux.
+
+### Noms de tables et de colonnes
+
+Écrivez les noms de tables et de colonnes **exactement comme ils sont stockés dans PostgreSQL** — casse, accents et espaces compris, **sans guillemets SQL** :
+
+```yaml
+- table: fiche client      # stockée sous "fiche client"
+  columns:
+    - name: prénom
+      strategy: FAKE
+      type: FIRST_NAME
+    - name: nom de famille
+      strategy: FAKE
+      type: LAST_NAME
+```
+
+Tout nom PostgreSQL légal est accepté (jusqu'à 63 octets en UTF-8). Brume le met entre guillemets dans chaque requête SQL qu'il génère.
+
+### Tables partitionnées et vues
+
+- Une **table partitionnée** compte pour une seule table : déclarez filtres et règles sur la table partitionnée (`payment`), jamais sur ses partitions. Brume lit et écrit à travers elle, et PostgreSQL range chaque ligne dans sa partition. Les clés étrangères déclarées partition par partition sont traitées comme des clés étrangères de la table partitionnée.
+- Les **vues, vues matérialisées et tables étrangères** ne sont pas des tables : elles ne peuvent pas figurer dans `brume.yml` et `brume scan` les ignore. Leurs définitions sont tout de même recréées sur la cible par la copie du schéma.
 
 ## `anonymization`
 
@@ -116,11 +162,11 @@ Le nom de la colonne à transformer.
 
 #### `columns[].strategy`
 
-L'une parmi : `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `KEEP`. Voir [stratégies](/fr/docs/strategies/).
+L'une parmi : `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `DATE_SHIFT`, `KEEP`. Voir [stratégies](/fr/docs/strategies/).
 
 #### `columns[].type`
 
-Obligatoire quand `strategy` est `FAKE` ou `MASK`. L'un parmi : `EMAIL`, `FIRST_NAME`, `LAST_NAME`, `PHONE`, `IBAN`, `ADDRESS`, `IP_ADDRESS`, `JSONB`. Voir [types sémantiques](/fr/docs/semantic-types/).
+Obligatoire quand `strategy` est `FAKE` ou `MASK`. L'un parmi : `EMAIL`, `FIRST_NAME`, `LAST_NAME`, `PHONE`, `IBAN`, `ADDRESS`, `IP_ADDRESS`, `DATE`, `JSONB`. Voir [types sémantiques](/fr/docs/semantic-types/).
 
 #### `columns[].json_paths`
 
@@ -152,17 +198,19 @@ Brume valide la configuration au démarrage et refuse de s'exécuter sur :
 
 - Une colonne avec `strategy: FAKE` ou `MASK` sans `type`.
 - Une colonne avec `strategy: NULLIFY` déclarée sur une colonne `NOT NULL`.
+- `MASK`, ou `FAKE` avec `type: DATE`, sur une colonne `UNIQUE` — leurs valeurs collisionneraient (voir [Colonnes UNIQUE et collisions](/fr/docs/strategies/#colonnes-unique-et-collisions)).
+- `FAKE` sur des colonnes liées par une clé étrangère sans entrée `linked_columns` qui les couvre.
 - Un `type: JSONB` sans `json_paths`.
 - Une table référencée dans `anonymization.tables` qui n'est pas accessible depuis `extraction.tables` (vous transformeriez du vide).
 - Une entrée `linked_columns` référençant une colonne également déclarée avec une stratégie différente.
 
-Exécutez [`brume dry-run`](/fr/docs/cli/#brume-dry-run) pour attraper tout cela sans toucher la cible.
+`brume plan` signale ces cas avant toute écriture. Lancez [`brume dry-run`](/fr/docs/cli/#brume-dry-run) pour dérouler tout le pipeline sans toucher la cible.
 
 ## Exemple complet
 
 ```yaml
 extraction:
-  fk_depth: 3
+  fk_depth: 1
   tables:
     - table: orders
       filter: "created_at >= '2025-01-01'"

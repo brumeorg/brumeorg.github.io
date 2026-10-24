@@ -9,11 +9,11 @@ Chaque recette est un workflow autonome : un énoncé de problème, la configura
 
 **Problème.** Un bug en production référence `orders.id = 982331`. Vous voulez une copie locale qui inclut cette commande, ses `users`, ses `order_items`, et rien d'autre.
 
-**Configuration.**
+**Configuration.** `fk_depth: 1` copie les lignes à un saut de clé étrangère de la commande — son utilisateur, ses lignes de commande — et, par défaut, chaque parent dont ces lignes ont besoin.
 
 ```yaml
 extraction:
-  fk_depth: 3
+  fk_depth: 1
   tables:
     - table: orders
       filter: "id = 982331"
@@ -145,9 +145,10 @@ Exécutez Brume indépendamment sur la base de chaque service avec le **même `B
 **`.env.brume`.** Générez-le avec `brume init dump`, puis renseignez :
 
 ```bash
-BRUME_TARGET_FILE=./out/pseudonymized.sql
-BRUME_TARGET_FILE_COMPRESS=gzip
-# Les variables Postgres TARGET_* sont ignorées quand TARGET_FILE est définie
+BRUME_SINK_TYPE=DUMP
+BRUME_SINK_OUTPUT_PATH=./out/pseudonymized.sql.gz
+BRUME_SINK_COMPRESSION=GZIP     # NONE | GZIP | ZSTD
+# Les variables BRUME_TARGET_* sont ignorées avec le sink DUMP
 ```
 
 **Exécution.**
@@ -172,7 +173,7 @@ gunzip -c pseudonymized.sql.gz | psql -h ... -U ... -d ...
 
 ```yaml
 extraction:
-  fk_depth: 4
+  fk_depth: 1
   tables:
     - table: tenants
       filter: "id = 42"
@@ -182,7 +183,7 @@ extraction:
       filter: "tenant_id = 42"
 ```
 
-Appliquez le filtre `tenant_id = 42` sur **chaque table racine** du périmètre tenant. La traversée des FK tire automatiquement les dépendants.
+Appliquez le filtre `tenant_id = 42` sur **chaque table racine** du périmètre tenant, et gardez un `fk_depth` bas. `fk_depth` est un rayon dans les deux sens : depuis une ligne partagée par plusieurs tenants (un plan, un pays, un produit), un saut de plus vers le bas atteint les lignes **d'autres tenants**. Vérifiez les décomptes par table de `brume plan` avant de lancer `execute`.
 
 ---
 

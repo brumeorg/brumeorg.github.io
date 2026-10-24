@@ -17,8 +17,8 @@ Ces deux valeurs sont l'« information supplémentaire » de l'art. 4.5 du RGPD 
 
 | Variable | Requise | Description |
 |---|---|---|
-| `BRUME_HMAC_SECRET` | **oui** | Sème `FAKE`, `HASH`, `linked_columns`. N'importe quelle chaîne à haute entropie ≥ 32 caractères. |
-| `BRUME_FPE_KEY` | **oui** | Clé du cipher FF1 utilisé par `FPE_ID` / `FPE_UUID`. Doit faire **au moins 16 caractères**. |
+| `BRUME_HMAC_SECRET` | **oui** | Sème `FAKE`, `HASH`, `DATE_SHIFT`, `linked_columns`. Chaîne à haute entropie d'au moins 16 caractères (32 et plus recommandés). |
+| `BRUME_FPE_KEY` | **oui** | Clé du cipher FF1 utilisé par `FPE_ID` / `FPE_UUID`. Exactement **16, 24 ou 32 caractères**. |
 
 :::caution[Rotation avec précaution]
 La rotation de ces secrets **casse le déterminisme** : les exécutions futures produisent des faux différents pour les mêmes valeurs source. Si vous avez des systèmes aval qui joignent sur des colonnes `HASH`-ées ou `FPE_*`-chiffrées, planifiez une bascule coordonnée.
@@ -35,52 +35,54 @@ La base de laquelle Brume lit. **Utilisez un compte en lecture seule.**
 | `BRUME_SOURCE_DB` | oui | Nom de la base |
 | `BRUME_SOURCE_USER` | oui | Nom d'utilisateur (lecture seule recommandé) |
 | `BRUME_SOURCE_PASSWORD` | oui | Mot de passe |
-| `BRUME_SOURCE_SSLMODE` | non | `disable` · `prefer` · `require` · `verify-full`. Défaut `prefer`. |
+| `BRUME_SOURCE_SSLMODE` | non | `disable` · `prefer` · `require` · `verify-ca` · `verify-full`. Défaut `prefer`. |
+| `BRUME_SCHEMA` | oui | Le schéma à pseudonymiser, écrit exactement comme il est stocké (casse, accents et espaces compris, sans guillemets). Le même nom de schéma est utilisé sur la cible. |
 
 ## Connexion cible (sink)
 
-Brume supporte deux **types de sink** — choisissez celui qui correspond à la façon dont `.env.brume` a été généré :
+Brume supporte deux **types de sink**, choisis par `BRUME_SINK_TYPE` — `brume init jdbc` et `brume init dump` le renseignent pour vous :
 
-- **`jdbc`** — écrit vers une cible PostgreSQL live (`brume init jdbc`).
-- **`dump`** — écrit un fichier `.sql` (`brume init dump`).
-
-Définissez un seul bloc, pas les deux.
+- **`JDBC`** (défaut) — écrit vers une cible PostgreSQL live.
+- **`DUMP`** — écrit un fichier `.sql`, rechargeable avec `psql`.
 
 ### Sink = `jdbc` (base PostgreSQL)
 
 | Variable | Requise | Description |
 |---|---|---|
 | `BRUME_TARGET_HOST` | oui | Nom d'hôte ou IP |
-| `BRUME_TARGET_PORT` | non | Port. Défaut `5432`. |
+| `BRUME_TARGET_PORT` | non | Port. Défaut `5460`. |
 | `BRUME_TARGET_DB` | oui | Nom de la base |
 | `BRUME_TARGET_USER` | oui | Nom d'utilisateur (doit pouvoir `CREATE` et `INSERT`) |
 | `BRUME_TARGET_PASSWORD` | oui | Mot de passe |
 | `BRUME_TARGET_SSLMODE` | non | Mêmes valeurs que la source. |
 
-### Sink = `dump` (fichier SQL)
+### Sink = `DUMP` (fichier SQL)
 
 | Variable | Requise | Description |
 |---|---|---|
-| `BRUME_TARGET_FILE` | oui | Chemin vers le fichier `.sql` que Brume écrira |
-| `BRUME_TARGET_FILE_COMPRESS` | non | `gzip` pour compresser à la volée. Défaut : non compressé. |
+| `BRUME_SINK_TYPE` | oui | `DUMP` |
+| `BRUME_SINK_OUTPUT_PATH` | oui | Chemin du fichier `.sql` que Brume écrit (par ex. `./dumps/dump.sql.gz`) |
+| `BRUME_SINK_COMPRESSION` | non | `NONE` · `GZIP` · `ZSTD`. Défaut `GZIP`. |
 
-Quand `BRUME_TARGET_FILE` est définie, les variables Postgres cible sont ignorées.
+Avec le sink `DUMP`, les variables cible sont ignorées et aucune connexion à la cible n'est ouverte. Le fichier contient le schéma (issu de `pg_dump`) et les lignes pseudonymisées ; il ne contient jamais de ligne qui casserait un index unique, il se recharge donc toujours avec `psql`.
 
 ## Options d'exécution
 
 | Variable | Requise | Défaut | Description |
 |---|---|---|---|
-| `BRUME_FK_DEPTH_OVERRIDE` | non | — | Surcharge `extraction.fk_depth` depuis `brume.yml`. Utile en CI pour des runs de smoke rapides. |
-| `BRUME_PARALLELISM` | non | `4` | Nombre de threads workers pour la transformation. |
-| `BRUME_LOG_FORMAT` | non | `pretty` | `pretty` ou `json`. Le flag `--json` surcharge cette valeur. |
-| `BRUME_LOCALE` | non | système | Locale pour Datafaker (par ex. `fr_FR`, `en_US`, `de_DE`). |
+| `BRUME_PARALLELISM` | non | `20` | Taille du pool de connexions. |
+| `BRUME_LOCALE` | non | `en` | Locale Datafaker (`en`, `fr`, `de`, …) — langue et formats des valeurs `FAKE`. |
+| `BRUME_PIPELINE_MODE` | non | `STREAMING` | `STREAMING` (par chunks, mémoire bornée) ou `BATCH` (tout en mémoire). |
+| `BRUME_DATE_SHIFT_MAX_DAYS` | non | `30` | Fenêtre de `DATE_SHIFT`, en jours. |
+| `BRUME_PGDUMP_PATH` | non | `pg_dump` | La commande `pg_dump` à lancer (éventuellement un chemin complet). |
+| `BRUME_CONFIG_PATH` | non | `brume.yml` | Chemin du fichier de règles. |
 
 ## Exemple `.env.brume`
 
 ```bash
 # --- Secrets (protéger au niveau des données source) ---
-BRUME_HMAC_SECRET=8aZb4...kpR9   # ≥ 32 car., haute entropie
-BRUME_FPE_KEY=AnotherSecret16ch  # ≥ 16 car.
+BRUME_HMAC_SECRET=8aZb4...kpR9   # ≥ 16 car. (32+ recommandés), haute entropie
+BRUME_FPE_KEY=AnotherSecret16c   # 16, 24 ou 32 car.
 
 # --- Source (lecture seule) ---
 BRUME_SOURCE_HOST=db.prod.internal
@@ -88,8 +90,10 @@ BRUME_SOURCE_DB=app_production
 BRUME_SOURCE_USER=brume_reader
 BRUME_SOURCE_PASSWORD=...
 BRUME_SOURCE_SSLMODE=require
+BRUME_SCHEMA=public
 
-# --- Sink = jdbc (Postgres local) ---
+# --- Sink = JDBC (Postgres local) ---
+BRUME_SINK_TYPE=JDBC
 BRUME_TARGET_HOST=localhost
 BRUME_TARGET_DB=app_dev
 BRUME_TARGET_USER=app
@@ -97,7 +101,7 @@ BRUME_TARGET_PASSWORD=...
 
 # --- Options ---
 BRUME_PARALLELISM=8
-BRUME_LOCALE=fr_FR
+BRUME_LOCALE=fr
 ```
 
 ## Créer un compte en lecture seule sur la source

@@ -12,10 +12,11 @@ Un **type** déclare la *sémantique* d'une colonne pour que Brume sache quel ty
 | `EMAIL` | `FAKE` | `alice.smith@example.com` | `a***@e***.com` |
 | `FIRST_NAME` | `FAKE` | `Alice` | `A****` |
 | `LAST_NAME` | `FAKE` | `Dupont` | `D*****` |
-| `PHONE` | `FAKE` · `MASK` | `+33 6 12 34 56 78` | `+33 6 ** ** ** 78` |
+| `PHONE` | `FAKE` · `MASK` | `08 37 30 90 45` (`fr`) · `(369) 107-2808` (`en`) | `+33 6 ** ** ** 78` |
 | `ADDRESS` | `FAKE` · `MASK` | `12 rue de la Paix, 75002 Paris` | `** rue ************, 75002 Paris` |
 | `IBAN` | `FAKE` · `MASK` | `FR76 3000 6000 0112 3456 7890 189` | `FR76 **** **** **** **** **** 189` |
 | `IP_ADDRESS` | `FAKE` · `MASK` | `192.168.1.42` | `192.168.*.*` |
+| `DATE` | `FAKE` | `1987-11-02` | — |
 | `JSONB` | `FAKE` | *(délégué à `json_paths`)* | — |
 
 ## Notes par type
@@ -24,10 +25,16 @@ Un **type** déclare la *sémantique* d'une colonne pour que Brume sache quel ty
 Génère un email syntaxiquement valide avec un faux prénom + nom + un TLD de démo sûr. Stable entre exécutions pour la même entrée + même secret.
 
 ### `FIRST_NAME` · `LAST_NAME`
-Pioche dans le dataset Datafaker correspondant à la locale système, semé par HMAC. Pour obtenir une cohérence inter-tables (la même personne réelle → le même faux prénom dans `users` et `payments`), déclarez une entrée [`linked_columns`](/fr/docs/configuration/#linked-columns).
+Pioche dans le dataset Datafaker correspondant à la locale système, semé par HMAC. Pour obtenir une cohérence inter-tables (la même personne réelle → le même faux prénom dans `users` et `payments`), déclarez une entrée [`linked_columns`](/fr/docs/configuration/#anonymizationlinked_columns).
+
+Le dataset compte environ 5 000 prénoms : sur une colonne `UNIQUE`, le faux porte un suffixe d'unicité (`Darrell.9f3ac21b04e7d5a6`). De même pour `ADDRESS`. Voir [Colonnes UNIQUE et collisions](/fr/docs/strategies/#colonnes-unique-et-collisions).
 
 ### `PHONE`
-Génère un numéro de téléphone au format de la locale. `MASK` conserve le préfixe international et les derniers chiffres, remplace le milieu.
+Génère un numéro de téléphone au format de la locale configurée. Le premier chiffre vient de Datafaker, tous les autres sont tirés de la graine HMAC — c'est déterministe, avec environ 81 (`en`) à 474 (`fr`) collisions par million de valeurs. `MASK` conserve le préfixe international et les derniers chiffres, remplace le milieu.
+
+:::note[Changé en 2.0]
+Les faux numéros diffèrent de ceux produits par la 1.x — voir [Déterminisme et versions](/fr/docs/how-it-works/#déterminisme-et-versions).
+:::
 
 ### `ADDRESS`
 Génère une rue, un code postal, une ville. `MASK` conserve le code postal et la ville, masque le numéro et le nom de rue.
@@ -37,6 +44,9 @@ Génère un IBAN syntaxiquement valide (code pays et chiffres de contrôle corre
 
 ### `IP_ADDRESS`
 Génère une adresse IPv4. `MASK` conserve les deux premiers octets (réseau), masque les deux derniers (hôte).
+
+### `DATE`
+Avec `FAKE`, tire une date déterministe — par défaut une date de naissance d'adulte plausible entre 1935 et 2008. La plage se règle par colonne avec `min_year` (inclus) et `max_year` (exclu), tous deux dans `[1900, 2100]`. Fonctionne sur les colonnes `date` et `timestamp`. Refusé sur une colonne `UNIQUE`. Pour décaler une vraie date plutôt que la remplacer, utilisez la stratégie [`DATE_SHIFT`](/fr/docs/strategies/#date_shift).
 
 ### `JSONB`
 Type spécial : indique que la colonne est un document JSONB et que Brume doit déléguer à la déclaration `json_paths` pour anonymiser des **champs spécifiques** à l'intérieur du document. Voir la [recette JSONB](/fr/docs/recipes/#pseudonymiser-les-colonnes-metadata-jsonb).

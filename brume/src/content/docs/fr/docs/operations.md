@@ -19,14 +19,9 @@ Les retours décroissants apparaissent au-delà de `2 × cœurs physiques`. Surv
 
 ### `fk_depth`
 
-Un `fk_depth` plus faible extrait moins de données. Si votre bug est reproductible à la profondeur 2, ne payez pas pour la profondeur 4.
+`fk_depth` est un rayon autour des lignes sélectionnées, compté en sauts de clé étrangère vers les parents **et** vers les enfants : chaque saut peut multiplier les lignes copiées. Commencez à `1`, vérifiez les décomptes par table de `brume plan`, et n'augmentez que si un test a besoin de lignes manquantes.
 
-Pattern courant au moment du debug :
-
-```bash
-BRUME_FK_DEPTH_OVERRIDE=1 brume execute   # run de smoke
-BRUME_FK_DEPTH_OVERRIDE=3 brume execute   # run complet
-```
+Sur un gros schéma, `orphan_policy: ALLOW_ORPHANS` garde le rayon strict au lieu de copier chaque parent dont les lignes copiées ont besoin — au prix de clés étrangères qui ne pointent sur rien (voir [`orphan_policy`](/fr/docs/configuration/#extractionorphan_policy)).
 
 ### Mémoire
 
@@ -58,6 +53,10 @@ La rotation **casse le déterminisme** — la même valeur source atterrira sur 
 3. Faites tourner les secrets.
 4. Re-exécutez `brume execute` sur tous les environnements aval.
 5. Notifiez les utilisateurs que les anciens faux IDs ne sont plus valides.
+
+### Passer à la 2.0
+
+Brume 2.0 change certaines valeurs pseudonymisées par rapport à la 1.x — faux téléphones, faux sur les colonnes `UNIQUE`, horodatages des dumps `.sql` (voir [Déterminisme et versions](/fr/docs/how-it-works/#déterminisme-et-versions)). Comme pour une rotation de secrets, planifiez la mise à jour comme une bascule : relancez `brume execute` sur chaque environnement aval que vous rapprochez ou comparez.
 
 ### Compte source en lecture seule
 
@@ -152,13 +151,29 @@ Introduit avec Brume 1.6. Le run n'est pas bloqué, mais toute pseudonymisation 
 - Soit ajoutez une règle dans `brume.yml`,
 - Soit confirmez explicitement par une règle `strategy: KEEP` pour documenter l'intention.
 
-### `FK depth exceeded`
+### `[ORPHANS]` (avec `orphan_policy: ALLOW_ORPHANS`)
 
 ```
-warning: table `events` reached at depth 5, exceeds fk_depth=3 — not extracted
+[ORPHANS] 13 row(s) of order_items reference 5 row(s) of products outside fk_depth via product_id
 ```
 
-La table n'est pas incluse dans le sous-ensemble. Soit augmentez `fk_depth`, soit ajoutez la table comme racine supplémentaire dans `extraction.tables`.
+Des lignes copiées référencent des lignes au-delà du rayon `fk_depth`, qui ne sont pas copiées. Les jointures sur cette clé étrangère les perdent, et recréer la contrainte sur la cible échoue. Augmentez `fk_depth`, ajoutez la table référencée à `extraction.tables`, ou revenez à `orphan_policy: KEEP_PARENTS` (défaut).
+
+### `[UNIQUE_COLLISION]`
+
+```
+[UNIQUE_COLLISION] public.holiday : 14 ligne(s) non écrite(s) — leur valeur pseudonymisée entre en collision avec une autre ligne sur une contrainte UNIQUE
+```
+
+Deux lignes ont reçu la même valeur pseudonymisée sur une colonne `UNIQUE` (ici un `DATE_SHIFT` sur des dates denses). L'exécution continue et les lignes perdues sont comptées par table dans le rapport. Pour garder toutes les lignes, utilisez `HASH`, `FPE_ID` ou `FPE_UUID` sur cette colonne — voir [Colonnes UNIQUE et collisions](/fr/docs/strategies/#colonnes-unique-et-collisions).
+
+### `Column '…' is UNIQUE in the source schema but …` (depuis `brume plan`)
+
+`MASK`, ou `FAKE` avec `type: DATE`, sur une colonne `UNIQUE` : presque toutes les valeurs collisionneraient, donc `plan` refuse la configuration (`CONFIG_SCHEMA_UNIQUE_NOT_INJECTIVE`, code de sortie `1`). Choisissez `HASH`, `FPE_ID`, `FPE_UUID`, ou `FAKE` avec un type nom / email.
+
+### `pg_dump: error: no matching schemas were found`
+
+`BRUME_SCHEMA` doit être le nom du schéma exactement comme il est stocké — casse, accents et espaces compris, sans guillemets.
 
 ## Suite
 

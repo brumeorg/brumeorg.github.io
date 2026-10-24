@@ -19,7 +19,7 @@ Nouveau sur Brume ? Démarrez par ces deux pages.
 Le modèle mental derrière l'outil — lisez-les une fois et le reste de la doc prend tout son sens.
 
 - [**Comment fonctionne Brume**](/fr/docs/how-it-works/) — phases d'extraction, transformation, écriture. Déterminisme. Secrets. Traversée des FK.
-- [**Stratégies de pseudonymisation**](/fr/docs/strategies/) — `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `KEEP`. Quand choisir laquelle.
+- [**Stratégies de pseudonymisation**](/fr/docs/strategies/) — `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `DATE_SHIFT`, `KEEP`. Quand choisir laquelle, et leur comportement sur les colonnes `UNIQUE`.
 - [**Types sémantiques**](/fr/docs/semantic-types/) — `EMAIL`, `PHONE`, `IBAN`… comment `FAKE` et `MASK` les utilisent.
 
 ## Référence

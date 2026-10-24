@@ -20,9 +20,9 @@ Brume est une CLI qui copie un **sous-ensemble** d'une base PostgreSQL source ve
 
 Trois phases :
 
-1. **Extract** — parcourt le schéma à partir des tables déclarées dans `extraction.tables`, suit les clés étrangères jusqu'à `fk_depth` niveaux (parents et enfants), applique les clauses `filter` éventuelles.
+1. **Extract** — part des lignes sélectionnées par `extraction.tables` et leurs clauses `filter`, puis copie chaque ligne située à au plus `fk_depth` sauts de clé étrangère, vers les parents comme vers les enfants (plus, par défaut, chaque parent dont ces lignes ont besoin — voir [`orphan_policy`](/fr/docs/configuration/#extractionorphan_policy)).
 2. **Transform** — pour chaque ligne, applique la stratégie par colonne déclarée dans `anonymization.tables[].columns`. Les colonnes non déclarées sont copiées telles quelles (`KEEP`).
-3. **Write** — pousse vers la base cible ou vers un fichier `.sql` portable.
+3. **Write** — pousse vers la base cible ou vers un fichier `.sql` portable. Une ligne dont la valeur pseudonymisée casserait une contrainte `UNIQUE` n'est pas écrite, et la perte est signalée (voir [Colonnes UNIQUE et collisions](/fr/docs/strategies/#colonnes-unique-et-collisions)).
 
 ## Stratégie vs Type
 
@@ -30,7 +30,7 @@ Deux concepts que vous verrez partout :
 
 | | Ce qu'il contrôle | Où il vit |
 |---|---|---|
-| **Stratégie** | *Comment* la valeur est transformée (`FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `KEEP`) | Obligatoire sur chaque colonne déclarée |
+| **Stratégie** | *Comment* la valeur est transformée (`FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `DATE_SHIFT`, `KEEP`) | Obligatoire sur chaque colonne déclarée |
 | **Type** | *Quel type de valeur* produire (`EMAIL`, `PHONE`, `IBAN`, …) | Obligatoire uniquement pour `FAKE` et `MASK` |
 
 Une colonne se configure comme une paire `(stratégie, type?)`. Voir [stratégies](/fr/docs/strategies/) et [types sémantiques](/fr/docs/semantic-types/) pour le panorama complet.
@@ -47,13 +47,25 @@ C'est ce qui rend Brume utilisable dans des workflows réels :
 - **Datasets joignables** — un email passé par `HASH` dans deux tables est haché vers la même valeur, donc les jointures fonctionnent toujours.
 - **Sessions de debug reproductibles** — un bug que vous avez reproduit hier sur `users.id = FPE_ID(42) = 7831` est encore à `7831` demain.
 
-Le déterminisme est ce qui distingue une pseudonymisation d'un anonymiseur à bruit aléatoire.
+Le déterminisme est ce qui distingue une pseudonymisation d'un anonymiseur à bruit aléatoire. Il ne garantit pas l'absence de collision : deux valeurs différentes peuvent recevoir le même faux — voir [Colonnes UNIQUE et collisions](/fr/docs/strategies/#colonnes-unique-et-collisions).
+
+## Déterminisme et versions
+
+Le déterminisme vaut **pour toutes les versions d'une même version majeure** : Brume 2.0, 2.1, 2.2… donnent la même sortie pour la même entrée, les mêmes secrets et la même locale. Des sorties de référence sont figées dans la suite de tests de Brume, et en changer une impose une nouvelle version majeure.
+
+La **2.0** change certaines sorties par rapport à la 1.x :
+
+- `FAKE` + `PHONE` : le format est conservé, les chiffres sont désormais tirés de la graine HMAC (1,6 % des valeurs entraient en collision auparavant).
+- Les faux prénoms, noms et adresses sur une colonne `UNIQUE` portent un suffixe d'unicité.
+- Dumps `.sql` : les horodatages sont écrits avec leur décalage UTC. Un `timestamptz` se recharge au bon instant quel que soit le fuseau de la session de chargement — il était auparavant décalé de l'écart de fuseau entre la machine qui exécute Brume et le serveur.
+
+En passant de la 1.x à la 2.0, repseudonymisez chaque base que vous devez rapprocher ou comparer : les valeurs ci-dessus changent une fois.
 
 ## Les clés étrangères sont préservées automatiquement
 
 Quand vous déclarez `id` de `users` en `FPE_ID`, Brume détecte chaque clé étrangère qui pointe vers `users.id` (par ex. `orders.user_id`) et la réécrit avec le **même chiffrement**. Résultat : les contraintes FK sur la cible tiennent sans désactiver de triggers.
 
-Pour les valeurs qui doivent correspondre entre des tables non jointes par une FK formelle (par ex. un `email` partagé entre `users.email` et `audit_logs.user_email`), utilisez [`linked_columns`](/fr/docs/configuration/#linked-columns).
+Pour les valeurs qui doivent correspondre entre des tables non jointes par une FK formelle (par ex. un `email` partagé entre `users.email` et `audit_logs.user_email`), utilisez [`linked_columns`](/fr/docs/configuration/#anonymizationlinked_columns).
 
 ## Secrets — l'information supplémentaire
 

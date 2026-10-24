@@ -47,7 +47,7 @@ Start with a single table — `users` — and pseudonymize email, phone and the 
 
 ```yaml
 extraction:
-  fk_depth: 3
+  fk_depth: 1         # FK radius around the selected rows — start small
   tables:
     - table: users
 
@@ -71,7 +71,7 @@ See the [`brume.yml` reference](/docs/configuration/) for the full schema.
 
 ## 3. Plan before running — `brume plan`
 
-`plan` is a command that estimates row volumes, walks foreign keys up to `fk_depth`, and most importantly lists **PII columns not covered by any rule**, it never extract anything.:
+`plan` counts the rows each table will receive within the `fk_depth` radius — exactly what `execute` will copy — and, most importantly, lists **PII columns not covered by any rule**. It never writes anything:
 
 ```bash
 brume plan
