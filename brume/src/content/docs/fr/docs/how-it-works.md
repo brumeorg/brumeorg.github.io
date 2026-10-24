@@ -61,9 +61,11 @@ La **2.0** change certaines sorties par rapport à la 1.x :
 
 En passant de la 1.x à la 2.0, repseudonymisez chaque base que vous devez rapprocher ou comparer : les valeurs ci-dessus changent une fois.
 
+La **2.1** ne change aucune sortie. Elle accepte `FAKE` sur des colonnes reliées par une clé étrangère sans entrée `linked_columns` : passer de la 2.0 à la 2.1 ne demande aucune nouvelle exécution.
+
 ## Les clés étrangères sont préservées automatiquement
 
-Quand vous déclarez `id` de `users` en `FPE_ID`, Brume détecte chaque clé étrangère qui pointe vers `users.id` (par ex. `orders.user_id`) et la réécrit avec le **même chiffrement**. Résultat : les contraintes FK sur la cible tiennent sans désactiver de triggers. Il en va de même pour `HASH` et `FAKE`, quel que soit le bout de la clé étrangère sur lequel vous déclarez la règle — un `FAKE EMAIL` sur `customers.email` s'applique aussi à `orders.customer_email` si une clé étrangère les relie.
+Quand vous déclarez `id` de `users` en `FPE_ID`, Brume détecte chaque clé étrangère qui pointe vers `users.id` (par ex. `orders.user_id`) et la réécrit avec le **même chiffrement**. Résultat : les contraintes FK sur la cible tiennent sans désactiver de triggers. Il en va de même pour `HASH` et — depuis la 2.1 — `FAKE`, quel que soit le bout de la clé étrangère sur lequel vous déclarez la règle — un `FAKE EMAIL` sur `customers.email` s'applique aussi à `orders.customer_email` si une clé étrangère les relie.
 
 Pour les valeurs qui doivent correspondre entre des tables non jointes par une FK formelle (par ex. un `email` partagé entre `users.email` et `audit_logs.user_email`), utilisez [`linked_columns`](/fr/docs/configuration/#anonymizationlinked_columns).
 

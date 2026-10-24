@@ -117,6 +117,10 @@ Contrôle **comment** chaque colonne est transformée.
 
 Déclare que plusieurs colonnes réparties sur différentes tables représentent **la même valeur sémantique** et doivent produire **la même sortie fictive** alors qu'**aucune clé étrangère ne les relie**. Les colonnes reliées par une clé étrangère déclarée n'en ont pas besoin : la règle de l'une s'applique automatiquement aux autres.
 
+:::note[Changé en 2.1]
+Avant la 2.1, `FAKE` sur des colonnes reliées par une clé étrangère était refusé sans entrée `linked_columns` qui les couvre. Depuis la 2.1, `FAKE` suit les clés étrangères tout seul, comme `FPE_ID`, `FPE_UUID` et `HASH`.
+:::
+
 ```yaml
 anonymization:
   linked_columns:

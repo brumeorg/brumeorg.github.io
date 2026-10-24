@@ -61,9 +61,11 @@ The determinism holds **across all releases of the same major version**: Brume 2
 
 When upgrading from 1.x, pseudonymize again every database you need to join or compare: the values above change once.
 
+**2.1** changes no output. It accepts `FAKE` on columns linked by a foreign key without a `linked_columns` entry, so upgrading from 2.0 needs no new run.
+
 ## Foreign keys are preserved automatically
 
-When you declare `id` of `users` as `FPE_ID`, Brume detects every foreign key that points to `users.id` (e.g. `orders.user_id`) and rewrites it with the **same encryption**. The result: FK constraints on the target hold without disabling triggers. The same goes for `HASH` and `FAKE`, and whatever end of the foreign key you declare the rule on — a `FAKE EMAIL` on `customers.email` also applies to `orders.customer_email` if a foreign key links them.
+When you declare `id` of `users` as `FPE_ID`, Brume detects every foreign key that points to `users.id` (e.g. `orders.user_id`) and rewrites it with the **same encryption**. The result: FK constraints on the target hold without disabling triggers. The same goes for `HASH` and — since 2.1 — `FAKE`, whatever end of the foreign key you declare the rule on — a `FAKE EMAIL` on `customers.email` also applies to `orders.customer_email` if a foreign key links them.
 
 For values that should match across tables that aren't joined by a formal FK (e.g. an `email` shared between `users.email` and `audit_logs.user_email`), use [`linked_columns`](/docs/configuration/#anonymizationlinked_columns).
 

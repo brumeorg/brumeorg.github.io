@@ -117,6 +117,10 @@ Controls **how** each column is transformed.
 
 Declares that several columns across different tables represent **the same semantic value** and must produce **the same fake output** although **no foreign key links them**. Columns linked by a declared foreign key don't need it: the rule of one is applied to the others automatically.
 
+:::note[Changed in 2.1]
+Before 2.1, `FAKE` on columns linked by a foreign key was refused unless a `linked_columns` entry covered them. Since 2.1, `FAKE` follows foreign keys on its own, like `FPE_ID`, `FPE_UUID` and `HASH`.
+:::
+
 ```yaml
 anonymization:
   linked_columns:

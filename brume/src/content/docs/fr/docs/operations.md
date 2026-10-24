@@ -54,9 +54,11 @@ La rotation **casse le déterminisme** — la même valeur source atterrira sur 
 4. Re-exécutez `brume execute` sur tous les environnements aval.
 5. Notifiez les utilisateurs que les anciens faux IDs ne sont plus valides.
 
-### Passer à la 2.0
+### Passer à la 2.x
 
 Brume 2.0 change certaines valeurs pseudonymisées par rapport à la 1.x — faux téléphones, faux sur les colonnes `UNIQUE`, horodatages des dumps `.sql` (voir [Déterminisme et versions](/fr/docs/how-it-works/#déterminisme-et-versions)). Comme pour une rotation de secrets, planifiez la mise à jour comme une bascule : relancez `brume execute` sur chaque environnement aval que vous rapprochez ou comparez.
+
+Brume 2.1 ne change aucune valeur pseudonymisée : passer de la 2.0 à la 2.1 ne demande aucune nouvelle exécution. `FAKE` suit désormais les clés étrangères sans entrée `linked_columns` — les entrées existantes continuent de fonctionner.
 
 ### Compte source en lecture seule
 

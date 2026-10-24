@@ -54,9 +54,11 @@ Rotation **breaks determinism** — the same source value will land on a differe
 4. Re-run `brume execute` on all downstream environments.
 5. Notify users that previous fake IDs are no longer valid.
 
-### Upgrading to 2.0
+### Upgrading to 2.x
 
 Brume 2.0 changes some pseudonymized values compared with 1.x — fake phone numbers, fakes on `UNIQUE` columns, timestamps in `.sql` dumps (see [Determinism and versions](/docs/how-it-works/#determinism-and-versions)). Like a secret rotation, plan the upgrade as a cutover: re-run `brume execute` on every downstream environment you join or compare.
+
+Brume 2.1 changes no pseudonymized value: upgrading from 2.0 needs no new run. `FAKE` now follows foreign keys without a `linked_columns` entry — existing entries keep working.
 
 ### Read-only source account
 
