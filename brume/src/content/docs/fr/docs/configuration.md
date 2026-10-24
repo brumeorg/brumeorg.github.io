@@ -115,7 +115,7 @@ Contrôle **comment** chaque colonne est transformée.
 
 ### `anonymization.linked_columns`
 
-Déclare que plusieurs colonnes réparties sur différentes tables représentent **la même valeur sémantique** et doivent produire **la même sortie fictive** — même quand elles ne sont pas reliées par une clé étrangère formelle.
+Déclare que plusieurs colonnes réparties sur différentes tables représentent **la même valeur sémantique** et doivent produire **la même sortie fictive** alors qu'**aucune clé étrangère ne les relie**. Les colonnes reliées par une clé étrangère déclarée n'en ont pas besoin : la règle de l'une s'applique automatiquement aux autres.
 
 ```yaml
 anonymization:
@@ -199,7 +199,7 @@ Brume valide la configuration au démarrage et refuse de s'exécuter sur :
 - Une colonne avec `strategy: FAKE` ou `MASK` sans `type`.
 - Une colonne avec `strategy: NULLIFY` déclarée sur une colonne `NOT NULL`.
 - `MASK`, ou `FAKE` avec `type: DATE`, sur une colonne `UNIQUE` — leurs valeurs collisionneraient (voir [Colonnes UNIQUE et collisions](/fr/docs/strategies/#colonnes-unique-et-collisions)).
-- `FAKE` sur des colonnes liées par une clé étrangère sans entrée `linked_columns` qui les couvre.
+- `FAKE` déclaré sur plusieurs colonnes liées par une clé étrangère avec un `type` ou des `min_year` / `max_year` différents — leurs valeurs divergeraient.
 - Un `type: JSONB` sans `json_paths`.
 - Une table référencée dans `anonymization.tables` qui n'est pas accessible depuis `extraction.tables` (vous transformeriez du vide).
 - Une entrée `linked_columns` référençant une colonne également déclarée avec une stratégie différente.

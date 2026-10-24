@@ -115,7 +115,7 @@ Controls **how** each column is transformed.
 
 ### `anonymization.linked_columns`
 
-Declares that several columns across different tables represent **the same semantic value** and must produce **the same fake output** — even when they aren't joined by a formal foreign key.
+Declares that several columns across different tables represent **the same semantic value** and must produce **the same fake output** although **no foreign key links them**. Columns linked by a declared foreign key don't need it: the rule of one is applied to the others automatically.
 
 ```yaml
 anonymization:
@@ -199,7 +199,7 @@ Brume validates the configuration at startup and refuses to run on:
 - A column with `strategy: FAKE` or `MASK` without a `type`.
 - A column with `strategy: NULLIFY` declared on a `NOT NULL` column.
 - `MASK`, or `FAKE` with `type: DATE`, on a `UNIQUE` column — their values would collide (see [UNIQUE columns and collisions](/docs/strategies/#unique-columns-and-collisions)).
-- `FAKE` on columns linked by a foreign key without a `linked_columns` entry covering them.
+- `FAKE` declared on several columns linked by a foreign key with a different `type` or different `min_year` / `max_year` — their values would diverge.
 - A `type: JSONB` without `json_paths`.
 - A table referenced in `anonymization.tables` that isn't reachable from `extraction.tables` (you'd be transforming nothing).
 - A `linked_columns` entry referencing a column also declared with a different strategy.

@@ -63,7 +63,7 @@ When upgrading from 1.x, pseudonymize again every database you need to join or c
 
 ## Foreign keys are preserved automatically
 
-When you declare `id` of `users` as `FPE_ID`, Brume detects every foreign key that points to `users.id` (e.g. `orders.user_id`) and rewrites it with the **same encryption**. The result: FK constraints on the target hold without disabling triggers.
+When you declare `id` of `users` as `FPE_ID`, Brume detects every foreign key that points to `users.id` (e.g. `orders.user_id`) and rewrites it with the **same encryption**. The result: FK constraints on the target hold without disabling triggers. The same goes for `HASH` and `FAKE`, and whatever end of the foreign key you declare the rule on — a `FAKE EMAIL` on `customers.email` also applies to `orders.customer_email` if a foreign key links them.
 
 For values that should match across tables that aren't joined by a formal FK (e.g. an `email` shared between `users.email` and `audit_logs.user_email`), use [`linked_columns`](/docs/configuration/#anonymizationlinked_columns).
 
