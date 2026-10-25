@@ -3,7 +3,7 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import catppuccin from 'starlight-theme-catppuccin';
 
-const SITE_URL = 'https://brumeorg.github.io';
+const SITE_URL = 'https://www.brume.software';
 const OG_IMAGE = `${SITE_URL}/og-image.png`;
 const DESCRIPTION =
 	'Deterministic PostgreSQL pseudonymization with foreign key preservation. Real data shape, GDPR-compliant. For debugging, testing, demos — anywhere but production.';
@@ -77,6 +77,7 @@ export default defineConfig({
 				ThemeSelect: './src/components/ThemeToggle.astro',
 				LanguageSelect: './src/components/QuickstartButton.astro',
 				Search: './src/components/MobileMenu.astro',
+				Hero: './src/components/Hero.astro',
 			},
 			sidebar: [
 				// --- Documentation section ---
@@ -162,6 +163,51 @@ export default defineConfig({
 							translations: { fr: 'Exploitation & dépannage' },
 							slug: 'docs/operations',
 						},
+					],
+				},
+				// --- Guides section ---
+				{
+					label: 'Guides',
+					translations: { fr: 'Guides' },
+					collapsed: false,
+					items: [
+						{
+							label: 'Overview',
+							translations: { fr: 'Vue d\'ensemble' },
+							slug: 'guides',
+						},
+						{
+							label: 'Anonymize a database for testing',
+							translations: { fr: 'Anonymiser une base pour les tests' },
+							slug: 'guides/anonymize-postgresql-database-for-testing',
+						},
+						{
+							label: 'Subset without breaking FKs',
+							translations: { fr: 'Sous-ensemble sans casser les FK' },
+							slug: 'guides/subset-production-database-foreign-keys',
+						},
+						{
+							label: 'Copy prod to staging (GDPR)',
+							translations: { fr: 'Copier la prod en staging (RGPD)' },
+							slug: 'guides/copy-production-to-staging-gdpr',
+						},
+						{
+							label: 'Pseudonymization vs anonymization',
+							translations: { fr: 'Pseudonymisation vs anonymisation' },
+							slug: 'guides/pseudonymization-vs-anonymization-gdpr',
+						},
+					],
+				},
+				{
+					label: 'Comparisons',
+					translations: { fr: 'Comparatifs' },
+					collapsed: false,
+					items: [
+						{
+							label: 'Brume vs PostgreSQL Anonymizer',
+							slug: 'guides/brume-vs-postgresql-anonymizer',
+						},
+						{ label: 'Brume vs pganonymize', slug: 'guides/brume-vs-pganonymize' },
 					],
 				},
 				// --- Roadmap section ---

@@ -1,0 +1,264 @@
+---
+title: Comment anonymiser une base PostgreSQL pour les tests
+description: Transformez une base PostgreSQL de production en base de test pseudonymisée et cohérente avec Brume — brume.yml complet, commandes, résultat attendu.
+head:
+  - tag: title
+    content: Anonymiser une base PostgreSQL pour les tests | Brume
+---
+
+import GuideCta from '../../../../components/GuideCta.astro';
+
+Des tests sur des données réalistes trouvent les bugs que les fixtures écrites à la main ratent : encodages exotiques, volumes déséquilibrés, cas limites auxquels personne n'avait pensé. Mais une copie brute de la production place les données personnelles de tous vos clients dans un environnement plus ouvert et moins protégé.
+
+Ce tutoriel construit une base de test à partir de la production avec Brume : un **sous-ensemble** des lignes, des données personnelles **remplacées à la volée**, des clés primaires **chiffrées**, et toutes les clés étrangères **toujours valides**.
+
+:::note[Anonymiser ou pseudonymiser ?]
+On cherche « anonymiser », mais ce que produit Brume est une **pseudonymisation** au sens de l'art. 4(5) du RGPD : la sortie peut être reliée aux personnes réelles avec vos secrets, elle reste donc une donnée personnelle. Lisez [Pseudonymisation vs anonymisation](/fr/guides/pseudonymization-vs-anonymization-gdpr/) avant de partager le résultat.
+:::
+
+## Ce que vous allez construire
+
+Un schéma e-commerce classique :
+
+```
+users ◀── orders ◀── order_items ──▶ products
+```
+
+L'objectif : une base de test contenant les commandes passées depuis le 1er janvier 2025, les utilisateurs qui les ont passées, leurs lignes de commande et les produits référencés — noms, emails, téléphones, adresses et texte libre pseudonymisés, et `users.id` / `orders.id` chiffrés de façon cohérente partout où ils apparaissent.
+
+## Prérequis
+
+- Brume installé — voir [Démarrage](/fr/docs/getting-started/) (Debian/Ubuntu, Fedora/CentOS, macOS).
+- `pg_dump` dans le `PATH`, en **version majeure au moins égale à celle de la source**. Brume l'utilise pour copier le schéma.
+- Une **cible** : une base PostgreSQL vide, ou un répertoire accessible en écriture si vous préférez un fichier `.sql` ([variante plus bas](#variante--écrire-un-fichier-sql)).
+
+## Étape 1 — Créer un compte en lecture seule sur la source
+
+Brume n'écrit jamais sur la source. Un compte en lecture seule garantit qu'une faute de frappe n'y changera rien :
+
+```sql
+CREATE ROLE brume_reader WITH LOGIN PASSWORD '...';
+GRANT CONNECT ON DATABASE shop TO brume_reader;
+GRANT USAGE ON SCHEMA public TO brume_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO brume_reader;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT ON TABLES TO brume_reader;
+```
+
+## Étape 2 — Configurer les connexions et les secrets
+
+Générez un `.env.brume` pour une cible PostgreSQL :
+
+```bash
+brume init jdbc
+```
+
+Générez deux secrets à forte entropie. `BRUME_HMAC_SECRET` demande au moins 16 caractères (32+ recommandés) ; `BRUME_FPE_KEY` doit faire **exactement 16, 24 ou 32 caractères** :
+
+```bash
+openssl rand -base64 48   # → BRUME_HMAC_SECRET (64 caractères)
+openssl rand -hex 16      # → BRUME_FPE_KEY (32 caractères)
+```
+
+Puis remplissez `.env.brume` :
+
+```bash
+# Secrets — les « informations supplémentaires » de l'art. 4(5) du RGPD. Jamais dans git.
+BRUME_HMAC_SECRET=<sortie de openssl rand -base64 48>
+BRUME_FPE_KEY=<sortie de openssl rand -hex 16>
+
+# Source (lecture seule)
+BRUME_SOURCE_HOST=db.prod.internal
+BRUME_SOURCE_DB=shop
+BRUME_SOURCE_USER=brume_reader
+BRUME_SOURCE_PASSWORD=...
+BRUME_SOURCE_SSLMODE=require
+BRUME_SCHEMA=public
+
+# Cible — une base de test vide
+BRUME_SINK_TYPE=JDBC
+BRUME_TARGET_HOST=localhost
+BRUME_TARGET_PORT=5432
+BRUME_TARGET_DB=shop_test
+BRUME_TARGET_USER=app
+BRUME_TARGET_PASSWORD=...
+```
+
+Validez la configuration — longueur des secrets, clé FPE, réglages du sink :
+
+```bash
+brume diag
+```
+
+`diag` ne se connecte à rien. La connectivité et la version de `pg_dump` sont vérifiées par `plan` et `execute` avant de lire la moindre ligne — voir [Contrôles préalables](/fr/docs/cli/#contrôles-préalables).
+
+Chaque variable est documentée dans la [référence `.env.brume`](/fr/docs/env/).
+
+## Étape 3 — Amorcer `brume.yml` depuis le schéma
+
+```bash
+brume scan
+```
+
+`scan` lit **uniquement les noms et les types des colonnes** — jamais vos données — et écrit un `brume.yml` pré-rempli : les colonnes qui ressemblent à des données personnelles reçoivent une règle (`email` → `FAKE EMAIL`, `phone` → `MASK PHONE`, `password` → `HASH`…), les clés primaires reçoivent `FPE_ID` ou `FPE_UUID`, les clés étrangères sont volontairement omises car elles héritent de la règle de la clé qu'elles référencent.
+
+C'est une **proposition** fondée sur les noms : relisez chaque ligne. Le bloc `extraction` est laissé en TODO — choisir les lignes à copier est une décision métier.
+
+## Étape 4 — Le `brume.yml` complet
+
+Après relecture, le fichier ressemble à ceci :
+
+```yaml
+extraction:
+  fk_depth: 1                     # rayon : les commandes 2025, leurs users, leurs lignes
+  tables:
+    - table: orders
+      filter: "created_at >= '2025-01-01'"
+
+anonymization:
+  tables:
+    - table: users
+      columns:
+        - name: id
+          strategy: FPE_ID        # appliqué aussi à orders.user_id, automatiquement
+        - name: email
+          strategy: FAKE
+          type: EMAIL
+        - name: first_name
+          strategy: FAKE
+          type: FIRST_NAME
+        - name: last_name
+          strategy: FAKE
+          type: LAST_NAME
+        - name: phone
+          strategy: MASK
+          type: PHONE
+        - name: birth_date
+          strategy: DATE_SHIFT    # ± jusqu'à 30 jours, garde les tranches d'âge
+        - name: password_hash
+          strategy: HASH
+        - name: notes
+          strategy: NULLIFY       # texte libre : on le supprime (colonne nullable)
+
+    - table: orders
+      columns:
+        - name: id
+          strategy: FPE_ID        # appliqué aussi à order_items.order_id
+        - name: shipping_address
+          strategy: FAKE
+          type: ADDRESS
+        - name: metadata
+          strategy: FAKE
+          type: JSONB
+          json_paths:
+            - path: $.contact.email
+              type: EMAIL
+            - path: $.contact.phone
+              type: PHONE
+```
+
+Pourquoi ces choix :
+
+| Colonne | Règle | Raison |
+|---|---|---|
+| `users.id`, `orders.id` | `FPE_ID` | Chiffrement préservant le format : entier en entrée, entier en sortie, sans collision. Brume trouve chaque clé étrangère qui pointe vers la colonne et la réécrit avec le même chiffrement. |
+| `email`, noms, `shipping_address` | `FAKE` + type | Des valeurs réalistes : le code de validation et les captures d'écran fonctionnent toujours. Déterministe : la même valeur réelle donne toujours le même faux. |
+| `phone` | `MASK` | Garde la forme (préfixe, derniers chiffres) pour le debug façon support. Refusé sur une colonne `UNIQUE` — utilisez `FAKE` dans ce cas. |
+| `birth_date` | `DATE_SHIFT` | Décale chaque date d'un nombre de jours déterministe : les distributions d'âge restent exploitables. |
+| `password_hash` | `HASH` | HMAC-SHA256 à clé : opaque, stable, jamais affiché. |
+| `notes` | `NULLIFY` | Un texte libre peut contenir n'importe quoi. Le supprimer est la minimisation la plus forte. |
+| `metadata` | `FAKE` + `JSONB` | Seuls les chemins listés sont réécrits ; le reste du document est conservé. |
+| `products` (non déclarée) | `KEEP` | Pas de données personnelles. Les colonnes non déclarées sont copiées telles quelles. |
+
+`products` est copiée alors qu'elle n'est pas dans `extraction.tables` : avec la valeur par défaut `orphan_policy: KEEP_PARENTS`, chaque parent référencé par une ligne copiée est copié aussi, pour qu'aucune clé étrangère ne pointe dans le vide. Les détails sont dans la [référence `brume.yml`](/fr/docs/configuration/) et dans [Stratégies de pseudonymisation](/fr/docs/strategies/).
+
+## Étape 5 — Plan : ce qui sera copié, ce qui n'est pas couvert
+
+```bash
+brume plan
+```
+
+`plan` est en lecture seule. Il compte les lignes que chaque table recevra — exactement ce que copiera `execute` — et liste les **colonnes qui ressemblent à des données personnelles sans aucune règle**. Toute colonne de cette liste sera copiée telle quelle : ajoutez une règle, ou un `strategy: KEEP` explicite pour documenter qu'elle est sans risque.
+
+`plan` refuse aussi les configurations vouées à l'échec — `NULLIFY` sur une colonne `NOT NULL`, `MASK` sur une colonne `UNIQUE` — avec le code de sortie `1`, avant toute écriture.
+
+## Étape 6 — Dry run : exercer tout le pipeline
+
+```bash
+brume dry-run
+```
+
+Extraction, transformation et écriture s'exécutent, mais l'écriture ne va nulle part. Cela détecte ce que `plan` ne voit pas : chemins JSONB qui ne résolvent jamais, incohérences de types, échecs de résolution des clés étrangères.
+
+## Étape 7 — Exécuter
+
+```bash
+brume execute
+```
+
+Brume copie le schéma avec `pg_dump`, lit en flux les lignes sélectionnées sur la source, transforme chaque colonne et écrit dans `shop_test`. Il termine par un résumé par table et le temps total d'exécution.
+
+## Résultat attendu
+
+**Les lignes annoncées par `plan`** : les commandes 2025, leurs utilisateurs, leurs lignes de commande, les produits que ces lignes référencent. Rien d'autre.
+
+**Les données personnelles remplacées.** Illustration — les faux exacts dépendent de vos secrets et de la locale :
+
+| Colonne | Source | Cible |
+|---|---|---|
+| `users.id` | `1` | `12227206` |
+| `orders.user_id` | `1` | `12227206` — même valeur, la jointure fonctionne |
+| `users.email` | `jane.doe@acme.io` | une fausse adresse comme `alice.smith@example.com` |
+| `users.phone` | `+33 6 12 34 56 78` | `+33 6 ** ** ** 78` |
+| `users.birth_date` | `1984-03-12` | une date à ±30 jours |
+| `users.notes` | texte libre | `NULL` |
+
+La sortie de `FPE_ID` est un entier, mais **pas de la même longueur** : les petits identifiants ressortent plus longs. Jusqu'à 2 147 483 647, ils restent dans la plage d'un `integer` ; au-delà, il faut un `bigint`.
+
+**Les clés étrangères valides.** Les contraintes n'ont jamais été désactivées. Vérifiez-le vous-même sur la cible :
+
+```sql
+-- Attendu : 0 — chaque commande pointe vers un utilisateur existant
+SELECT count(*)
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+WHERE u.id IS NULL;
+```
+
+**Reproductible.** Relancez `brume execute` avec les mêmes secrets : vous obtenez les mêmes valeurs. Un bug reproduit aujourd'hui sur `users.id = 12227206` est toujours sur `12227206` après le prochain rafraîchissement. Cette stabilité vaut pour toutes les versions d'une même version majeure.
+
+**Les collisions signalées, pas cachées.** Si deux lignes obtiennent la même valeur pseudonymisée sur une colonne `UNIQUE`, la seconde n'est pas écrite et la perte est signalée par table (`[UNIQUE_COLLISION]` dans les logs). Pour zéro collision sur une colonne unique, utilisez `HASH`, `FPE_ID` ou `FPE_UUID` — voir [Colonnes UNIQUE et collisions](/fr/docs/strategies/#colonnes-unique-et-collisions).
+
+## Variante : écrire un fichier `.sql`
+
+Pas de base cible sous la main, ou un fichier à remettre à un relecteur ? Générez le sink dump :
+
+```bash
+brume init dump
+```
+
+```bash
+BRUME_SINK_TYPE=DUMP
+BRUME_SINK_OUTPUT_PATH=./out/shop_test.sql.gz
+BRUME_SINK_COMPRESSION=GZIP     # NONE | GZIP | ZSTD
+```
+
+`brume execute` écrit alors le schéma et les lignes pseudonymisées dans le fichier. Restaurez-le où vous voulez :
+
+```bash
+gunzip -c ./out/shop_test.sql.gz | psql -h localhost -U app -d shop_test
+```
+
+## Avant de partager la base
+
+- **Traitez-la comme une donnée personnelle.** Limitez qui y a accès et fixez une durée de conservation. La page [RGPD & conformité](/fr/docs/gdpr/) contient une checklist DPO.
+- **Protégez les secrets** comme les données source elles-mêmes : qui détient `BRUME_HMAC_SECRET` et `BRUME_FPE_KEY` détient le lien vers les personnes réelles.
+- **Mesurez le risque résiduel.** Des combinaisons comme date de naissance + code postal + sexe peuvent isoler une personne même sans nom. [`brume audit --anonymity`](/fr/docs/k-anonymity/) le mesure.
+
+## Guides liés
+
+- [Extraire un sous-ensemble de la prod sans casser les clés étrangères](/fr/guides/subset-production-database-foreign-keys/) — choisir `fk_depth` et les filtres.
+- [Copier la prod en staging en conformité RGPD](/fr/guides/copy-production-to-staging-gdpr/) — le même pipeline, automatisé.
+- [Pseudonymisation vs anonymisation : ce que dit le RGPD](/fr/guides/pseudonymization-vs-anonymization-gdpr/)
+
+<GuideCta />

@@ -4,10 +4,11 @@ import type { SidebarEntry } from '@astrojs/starlight/types';
 /**
  * Map URL prefixes to a logical "section" name. The sidebar is filtered so
  * that each section sees only its own groups — no shared sidebar between
- * Docs, Roadmap and Support.
+ * Docs, Guides, Roadmap and Support.
  */
 const SECTIONS: Record<string, string> = {
 	'/docs': 'docs',
+	'/guides': 'guides',
 	'/roadmap': 'roadmap',
 	'/support': 'support',
 };

@@ -22,6 +22,7 @@ export const collections = {
 		schema: i18nSchema({
 			extend: z.object({
 				'header.docs': z.string().optional(),
+				'header.guides': z.string().optional(),
 				'header.roadmap': z.string().optional(),
 				'header.support': z.string().optional(),
 				'header.enterprise': z.string().optional(),
@@ -55,6 +56,10 @@ export const collections = {
 				'install.label.debian': z.string().optional(),
 				'install.label.rhel': z.string().optional(),
 				'install.label.macos': z.string().optional(),
+				'guides.cta.title': z.string().optional(),
+				'guides.cta.lead': z.string().optional(),
+				'guides.cta.quickstart': z.string().optional(),
+				'guides.cta.enterprise': z.string().optional(),
 			}),
 		}),
 	}),

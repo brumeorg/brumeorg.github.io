@@ -1,0 +1,108 @@
+---
+title: Copy production data to staging safely (GDPR)
+description: Refresh a PostgreSQL staging database from production without copying real identities — pipeline, CI job and what the GDPR still requires.
+---
+
+import GuideCta from '../../../components/GuideCta.astro';
+
+Staging is only useful if it looks like production. The quickest way to get there — restoring last night's backup — also copies every customer's name, email and address into an environment that more people can reach, with weaker controls and longer-lived copies.
+
+This guide sets up a staging refresh where **real values never land in staging**, and is honest about what the GDPR still expects once they don't.
+
+## What the GDPR and the CNIL say
+
+- **Reusing production data for tests is a new purpose.** The French data protection authority's [developer guide](https://github.com/LINCnil/Guide-RGPD-du-developpeur/blob/master/11-Tester%20vos%20applications.md) states that real production data should not be used during development and testing, that doing so diverts it from its original purpose, and that fictitious data is always preferable. Failing that, test environments must get the **same security measures as production**.
+- **Pseudonymized data is still personal data.** GDPR Recital 26: data that could be attributed to a person by the use of additional information "should be considered to be information on an identifiable natural person". A pseudonymized staging database stays within the GDPR.
+- **But pseudonymization is the measure the GDPR names.** It is cited as an appropriate safeguard when assessing a new purpose (Art. 6(4)(e)), as a security measure (Art. 32(1)(a)), and as a way to implement data protection by design (Art. 25(1)).
+
+In practice: if synthetic fixtures are enough, use them. When staging needs production realism — volumes, distributions, edge cases, bug reproduction — a **pseudonymized, minimized** copy, treated as personal data and validated with your DPO, is the defensible middle ground. More on the legal side in [Pseudonymization vs anonymization](/guides/pseudonymization-vs-anonymization-gdpr/).
+
+## The pipeline
+
+```
+prod (read-only) ──▶ brume: filter + transform ──▶ staging
+                      secrets from your vault
+```
+
+1. **Read with a read-only account.** Brume never writes to the source; the account guarantees it. Grants are in the [`.env.brume` reference](/docs/env/#creating-a-read-only-account-on-the-source).
+2. **Transform on the fly.** Rows are pseudonymized between source and target: staging never receives a real value, and there is no intermediate unmasked copy to clean up.
+3. **Copy only what staging needs.** Filters and a foreign-key radius select a coherent subset — see [Subsetting without breaking foreign keys](/guides/subset-production-database-foreign-keys/).
+4. **Declare the rules in a reviewed file.** `brume.yml` lives in git and goes through code review; your DPO can read it. `brume scan` drafts it from the schema; `brume plan` lists PII-looking columns no rule covers.
+5. **Keep the secrets in a secret manager.** `BRUME_HMAC_SECRET` and `BRUME_FPE_KEY` are the "additional information" of Art. 4(5). Whoever holds them can link staging back to real people.
+6. **Refresh on a schedule.** Same secrets, same output: a user or order QA refers to keeps the same pseudonymized id from one refresh to the next.
+
+## A weekly refresh with GitHub Actions
+
+Commit `brume.yml` at the repository root, store the secrets in the CI secret store, and schedule the job:
+
+```yaml
+# .github/workflows/refresh-staging.yml
+name: Refresh staging from prod
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Sunday 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4        # brings brume.yml
+      - name: Install pg_dump
+        run: |
+          # Major version >= your production database's
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+      - name: Install Brume
+        run: |
+          curl -1sLf 'https://dl.cloudsmith.io/public/brume/brume/setup.deb.sh' | sudo -E bash
+          sudo apt-get install -y brume
+      - name: Pseudonymize prod into staging
+        env:
+          BRUME_HMAC_SECRET:     ${{ secrets.BRUME_HMAC_SECRET }}
+          BRUME_FPE_KEY:         ${{ secrets.BRUME_FPE_KEY }}
+          BRUME_SOURCE_HOST:     ${{ secrets.PROD_HOST }}
+          BRUME_SOURCE_DB:       app_production
+          BRUME_SOURCE_USER:     brume_reader
+          BRUME_SOURCE_PASSWORD: ${{ secrets.PROD_RO_PASSWORD }}
+          BRUME_SOURCE_SSLMODE:  require
+          BRUME_SCHEMA:          public
+          BRUME_TARGET_HOST:     ${{ secrets.STAGING_HOST }}
+          BRUME_TARGET_PORT:     5432
+          BRUME_TARGET_DB:       app_staging
+          BRUME_TARGET_USER:     app
+          BRUME_TARGET_PASSWORD: ${{ secrets.STAGING_PASSWORD }}
+        run: |
+          brume diag      # validates secrets and configuration
+          brume plan      # checks the source connection, refuses configs that can only fail
+          brume execute --json 2> brume-run.jsonl
+```
+
+Without a `.env.brume` file, Brume reads its configuration from the process environment, so the job needs nothing else. `--json` writes structured logs you can archive or ship to your SIEM.
+
+## Know before you switch
+
+- **Each run rebuilds staging.** `brume execute` recreates the target from scratch: test accounts or fixtures added by hand on staging disappear at the next refresh. Re-create them with a seed script after the run. An incremental [merge mode](/roadmap/merge-mode/) is on the roadmap.
+- **Rotating the secrets changes every value.** Same for upgrading to a new major version of Brume. Plan it as a cutover — see [Rotating secrets](/docs/operations/#rotating-secrets).
+- **Collisions are reported, not hidden.** A row whose pseudonymized value collides on a `UNIQUE` column isn't written; the loss is counted per table. Use `HASH`, `FPE_ID` or `FPE_UUID` on columns that must keep every row.
+- **Free text is the classic leak.** Comments, notes and support messages can contain anything. `NULLIFY` them unless a test really needs them.
+
+## Staging is still personal data
+
+The pseudonymized copy has to be handled as such:
+
+- Restrict access to the people who need it, with your usual database roles.
+- Set a retention period on it.
+- Record the processing in your records of processing activities (Art. 30) — the [GDPR page](/docs/gdpr/#citing-brume-in-your-records-of-processing) has a suggested wording.
+- Measure the residual re-identification risk with [`brume audit --anonymity`](/docs/k-anonymity/).
+- Never call the dataset "anonymous" in documentation or contracts.
+
+The full [DPO checklist](/docs/gdpr/#dpo-checklist) is the page to share before the first run.
+
+## Related guides
+
+- [How to anonymize a PostgreSQL database for testing](/guides/anonymize-postgresql-database-for-testing/) — the same flow, step by step, on a laptop.
+- [Subsetting a production database without breaking foreign keys](/guides/subset-production-database-foreign-keys/)
+- [Pseudonymization vs anonymization: what the GDPR says](/guides/pseudonymization-vs-anonymization-gdpr/)
+
+<GuideCta />

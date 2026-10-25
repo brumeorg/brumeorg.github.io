@@ -1,0 +1,127 @@
+---
+title: 'Pseudonymization vs anonymization: what the GDPR says'
+description: 'Pseudonymization (Art. 4(5)) or anonymization (Recital 26)? Definitions, the CNIL criteria and what they mean for your dev and test databases.'
+head:
+  - tag: title
+    content: Pseudonymization vs anonymization under the GDPR | Brume
+---
+
+import GuideCta from '../../../components/GuideCta.astro';
+
+In engineering teams, "anonymize the database" usually means "replace the names and the emails". Legally, that is almost always **pseudonymization** — and the difference is not academic: anonymous data falls outside the GDPR, pseudonymized data stays fully inside it.
+
+This page walks through the legal texts, the guidance of the French data protection authority (CNIL), and what it all means for a development or test database.
+
+:::note
+This page is an educational summary, not legal advice. Check your own case with your DPO.
+:::
+
+## At a glance
+
+| | Pseudonymization | Anonymization |
+|---|---|---|
+| **Legal text** | GDPR Art. 4(5) | GDPR Recital 26 |
+| **Re-identification** | Possible with additional information (a key, a mapping table) | Impossible in practice, irreversibly |
+| **Status** | Personal data: **the GDPR applies** | No longer personal data: **the GDPR no longer applies** |
+| **Typical techniques** | Keyed hashing, format-preserving encryption, tokenization, deterministic fake values | Aggregation, generalization, noise, suppression |
+| **Typical use** | Dev, test, debugging, internal analytics | Open data, published statistics, sharing without GDPR obligations |
+
+## Pseudonymization: Article 4(5)
+
+> *"Pseudonymisation"* means the processing of personal data in such a manner that the personal data can no longer be attributed to a specific data subject **without the use of additional information**, provided that such additional information is kept separately and is subject to technical and organisational measures to ensure that the personal data are not attributed to an identified or identifiable natural person.
+> — **GDPR Art. 4(5)**
+
+Three things to note:
+
+1. **The link still exists.** It has just been moved into "additional information": an encryption key, an HMAC secret, a mapping table.
+2. **That information is kept separately.** A key stored next to the data pseudonymizes nothing.
+3. **It is protected** by technical and organizational measures: access control, a secret manager, logging.
+
+## Anonymization: Recital 26
+
+The GDPR's articles don't define anonymization. Recital 26 draws the line:
+
+> Personal data which have undergone pseudonymisation, which could be attributed to a natural person by the use of additional information should be considered to be information on an identifiable natural person.
+
+> The principles of data protection should therefore not apply to anonymous information, namely information which does not relate to an identified or identifiable natural person or to personal data rendered anonymous in such a manner that the data subject is not or no longer identifiable.
+> — **GDPR Recital 26**
+
+To decide whether someone is identifiable, the same recital says to take into account all the means reasonably likely to be used, by the controller or by another person — considering the cost, the time required and the technology available.
+
+## What the CNIL says
+
+The CNIL sums up the difference on its page on [anonymization of personal data](https://www.cnil.fr/fr/technologies/lanonymisation-de-donnees-personnelles) (in French):
+
+- anonymization makes any identification of the person impossible in practice, by any means and irreversibly;
+- with pseudonymization, the data therefore remain personal data;
+- pseudonymization is reversible, unlike anonymization.
+
+For a dataset to be truly anonymous, the CNIL uses the **three criteria** of the Article 29 Working Party's Opinion 05/2014:
+
+| Criterion | What must be impossible |
+|---|---|
+| **Singling out** | Isolating an individual in the dataset |
+| **Linkability** | Linking separate datasets about the same individual |
+| **Inference** | Deducing, with near certainty, new information about an individual |
+
+## Why a relational database is (almost) always pseudonymized
+
+Replacing names and emails doesn't meet those three criteria, least of all in a relational database:
+
+- **Foreign keys are linkability by design.** A useful test database keeps orders linked to their customers and payments to their orders. That's exactly what the linkability criterion rules out.
+- **Quasi-identifiers single people out.** Birth date + ZIP code + gender is often enough to isolate a person, name or no name. That's what [k-anonymity](/docs/k-anonymity/) measures.
+- **The key exists.** Keyed hashing, encryption and deterministic fake values always give the same output for the same input: whoever holds the key can redo the link. That's useful — tests stay stable, joins work — but it is the very definition of Art. 4(5).
+
+The practical conclusion: a database copy that keeps its structure and its joins is a **pseudonymization**. Treating it as anonymous is the mistake to avoid.
+
+## Recent case law and guidance
+
+- **CJEU, 4 September 2025, EDPS v SRB ([C-413/23 P](https://curia.europa.eu/juris/liste.jsf?num=C-413/23)).** The Court held that pseudonymized data is not personal data in every case and for every person: for a recipient with no means reasonably likely to re-identify people, it may not be. For the controller that holds the additional information, however, it remains personal data. If you pseudonymize your own databases with your own keys, that's you.
+- **EDPB, [Guidelines 01/2025 on pseudonymisation](https://www.edpb.europa.eu/our-work-tools/documents/public-consultations/2025/guidelines-012025-pseudonymisation_en)**, published for public consultation in January 2025. They detail how to implement pseudonymization and where it fits in GDPR obligations.
+
+## What pseudonymization still gets you
+
+Staying inside the GDPR doesn't make pseudonymization pointless. The regulation names it explicitly:
+
+- **Art. 25(1)** — as a data protection by design measure;
+- **Art. 32(1)(a)** — among the security measures: "the pseudonymisation and encryption of personal data";
+- **Art. 6(4)(e)** — as an appropriate safeguard when assessing whether a further purpose is compatible with the original one;
+- **Art. 89(1)** — as a safeguard for archiving in the public interest, scientific or historical research, and statistics.
+
+It lowers the impact of a leak, limits what teams see, and documents a privacy-by-design approach.
+
+## Use case: dev, test, staging
+
+The CNIL's [GDPR guide for development teams](https://github.com/LINCnil/Guide-RGPD-du-developpeur/blob/master/11-Tester%20vos%20applications.md) is explicit (our translation): real production data **must not be used** during development and testing; using personal data from your production database for tests **diverts it from its original purpose**. Fictitious data is always preferable — and failing that, test environments must get the same security measures as production.
+
+A decision grid follows from it:
+
+1. **Is fictitious data enough?** Fixtures, fake data generators: that's the default recommendation. Use it.
+2. **Do you need production realism** — volumes, distributions, edge cases, reproducing a bug? A **pseudonymized, minimized** copy greatly reduces the risk but remains personal data: assess the compatibility of the new purpose (Art. 6(4)), apply security measures close to production, restrict recipients, set a retention period, record the processing — and get your DPO's sign-off.
+3. **Do you need to publish or share outside any GDPR framework?** You need real anonymization (aggregation, generalization, noise), checked against the three criteria. A pseudonymized copy won't do.
+
+## Where Brume fits
+
+Brume performs **pseudonymization in the sense of Art. 4(5)**, and says so:
+
+- The "additional information" is the pair `BRUME_HMAC_SECRET` + `BRUME_FPE_KEY`. Keep it separately, in a secret manager.
+- Transformations are deterministic: foreign keys stay valid and tests stay stable — which is precisely what makes the output reversible for whoever holds the secrets.
+- **Minimization** comes from subsetting: filters and a foreign-key radius ([guide](/guides/subset-production-database-foreign-keys/)).
+- `brume audit --anonymity` [measures the k-anonymity](/docs/k-anonymity/) of the result — a measure of residual risk, not an anonymity certificate.
+
+The [GDPR & compliance](/docs/gdpr/) page details the legal position, the articles covered and the checklist to share with your DPO.
+
+## Key takeaways
+
+- Pseudonymized = **still** personal data. Anonymous = impossible to re-identify, in practice and irreversibly.
+- A database that keeps its joins is not anonymous.
+- Pseudonymization is a security measure the GDPR recognizes, not a way out of the GDPR.
+- For tests, the CNIL prefers fictitious data; a pseudonymized copy of production must be justified, minimized and protected.
+
+## Related guides
+
+- [Copy production data to staging safely (GDPR)](/guides/copy-production-to-staging-gdpr/)
+- [How to anonymize a PostgreSQL database for testing](/guides/anonymize-postgresql-database-for-testing/)
+- [Subsetting a production database without breaking foreign keys](/guides/subset-production-database-foreign-keys/)
+
+<GuideCta />

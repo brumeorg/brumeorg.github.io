@@ -41,4 +41,4 @@ Usage de niveau production, conformité et dépannage.
 
 ---
 
-**Vous cherchez la Roadmap ?** Voir [Roadmap](/fr/roadmap/). **Besoin d'aide ?** Voir [Support](/fr/support/).
+**Vous préférez des guides pas à pas ?** Voir [Guides](/fr/guides/). **Vous cherchez la Roadmap ?** Voir [Roadmap](/fr/roadmap/). **Besoin d'aide ?** Voir [Support](/fr/support/).

@@ -1,0 +1,107 @@
+---
+title: Brume vs PostgreSQL Anonymizer
+description: 'Brume vs PostgreSQL Anonymizer : CLI externe ou extension dans la base ? Masquage, clés étrangères, sous-ensembles, déterminisme : quand choisir lequel.'
+---
+
+import GuideCta from '../../../../components/GuideCta.astro';
+
+[PostgreSQL Anonymizer](https://postgresql-anonymizer.readthedocs.io/en/stable/) (l'extension `anon`, maintenue par Dalibo) et Brume protègent tous deux les données personnelles dans PostgreSQL. Leurs conceptions diffèrent, et chacun est le meilleur choix dans des situations différentes — cette page essaie de dire lesquelles, honnêtement.
+
+:::note[Sources]
+Les affirmations sur PostgreSQL Anonymizer proviennent de [sa documentation officielle](https://postgresql-anonymizer.readthedocs.io/en/stable/) (version stable, vérifiée en octobre 2026). Celles sur Brume proviennent de [la documentation de ce site](/fr/docs/). Si quelque chose n'est plus à jour, [dites-le-nous](https://github.com/brumeorg/Brume/issues).
+:::
+
+## En un coup d'œil
+
+| | PostgreSQL Anonymizer | Brume |
+|---|---|---|
+| **Forme** | Extension installée dans la base (`CREATE EXTENSION anon`) | CLI externe ; lit la source avec un compte en lecture seule |
+| **Règles** | Instructions SQL `SECURITY LABEL` sur les colonnes et les rôles | Fichier déclaratif `brume.yml` |
+| **Modes** | Masquage dynamique, masquage statique, dumps anonymes, vues de masquage, masquage de réplique, masquage via data wrappers | Copie avec transformation : source → autre base PostgreSQL ou fichier `.sql` |
+| **Masquage en direct pour certains utilisateurs** | Oui — les rôles masqués voient des données masquées dans la base de production | Non |
+| **Clés et clés étrangères** | Vous choisissez des fonctions cohérentes par colonne (hachage, pseudonymisation déterministe, mélange) | Une règle sur une clé s'applique automatiquement à chaque colonne liée par une clé étrangère ; `FPE_ID` / `FPE_UUID` chiffrent les clés sans collision |
+| **Sous-ensembles** | Échantillonnage avec `TABLESAMPLE` ; l'extraction d'un sous-ensemble avec intégrité référentielle n'est pas prise en charge | Filtres + rayon de clés étrangères (`fk_depth`), parents conservés pour qu'aucune FK ne pointe dans le vide |
+| **Déterminisme** | Disponible via les fonctions de pseudonymisation à graine et de hachage avec sel ; les fonctions de faux sont aléatoires | Chaque stratégie est déterministe et à clé, stable sur toutes les versions d'une version majeure |
+| **Détection des colonnes personnelles** | Fonctions de détection qui suggèrent les colonnes à masquer | `brume scan` propose des règles à partir des noms de colonnes ; `brume plan` liste les colonnes d'apparence personnelle non couvertes |
+| **Catalogue de fonctions** | Large : faux, pseudonymisation, hachage, brouillage partiel, bruit, généralisation, mélange, masquage conditionnel, floutage d'images, fonctions personnalisées | Huit stratégies : `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `DATE_SHIFT`, `KEEP` |
+| **PostgreSQL supporté** | 14 à 18 pour la série 3.x | Voir [Démarrage](/fr/docs/getting-started/) |
+
+## Architecture : dans la base ou à l'extérieur
+
+**PostgreSQL Anonymizer est une extension.** Elle s'exécute dans PostgreSQL, elle doit donc être installée sur le serveur : paquets pour RHEL, Debian/Ubuntu et SUSE, image Docker, ou service managé qui la propose — sa documentation cite notamment Aiven, Crunchy Bridge, Google Cloud SQL, Azure Database et Neon. Les règles de masquage sont déclarées en SQL et vivent avec le schéma :
+
+```sql
+SECURITY LABEL FOR anon ON COLUMN customer.phone
+  IS 'MASKED WITH FUNCTION anon.partial(phone,2,$$******$$,2)';
+```
+
+**Brume est une CLI qui s'exécute hors de la base.** Sur la source, elle n'a besoin que d'un compte en lecture seule et de `pg_dump`. Les règles vivent dans un fichier `brume.yml` versionné avec votre code :
+
+```yaml
+- table: customer
+  columns:
+    - name: phone
+      strategy: MASK
+      type: PHONE
+```
+
+Conséquence : si vous ne pouvez pas installer d'extension sur votre serveur de production — service managé qui ne propose pas `anon`, ou politique interne contre les extensions en production — Brume fonctionne quand même. Si vous voulez que les règles vivent dans la base elle-même, à côté du schéma, l'extension le fait nativement.
+
+## Modes de masquage
+
+C'est là que PostgreSQL Anonymizer couvre un terrain que Brume ne couvre pas.
+
+- **Masquage dynamique** : les rôles étiquetés `MASKED` voient des valeurs masquées lorsqu'ils interrogent **la base de production**, tandis que les autres rôles voient les vraies données. Utile pour les équipes support, les analystes ou les outils de BI qui ont besoin d'un accès en direct sans voir les identités. **Brume n'a pas d'équivalent** — il ne produit que des copies.
+- **Le masquage statique** réécrit les données sur place, définitivement ; la documentation prévient que ces méthodes détruisent les données d'origine.
+- **Les dumps anonymes** exportent les données masquées avec `pg_dump` exécuté par un rôle masqué.
+- **Les vues de masquage**, **le masquage de réplique** et **les data wrappers de masquage** étendent les mêmes règles à d'autres chemins d'accès.
+
+Brume fait une seule chose : il **copie** une source vers une cible distincte, en transformant à la volée. La source n'est jamais modifiée ; la cible est une nouvelle base PostgreSQL ou un fichier `.sql`.
+
+## Clés primaires et clés étrangères
+
+Les deux outils peuvent préserver les jointures, de manières différentes.
+
+Avec PostgreSQL Anonymizer, vous choisissez une **fonction cohérente par colonne** : la documentation renvoie au hachage, qui permet de garder l'intégrité référentielle intacte, aux fonctions de pseudonymisation déterministes, et au mélange (`anon.shuffle_column`), présenté comme utile pour les clés étrangères. Vous déclarez une règle sur chaque colonne concernée.
+
+Avec Brume, vous déclarez une règle **une seule fois, sur la clé**. Brume détecte les clés étrangères et applique la même transformation à chaque colonne liée — `FPE_ID`, `FPE_UUID`, `HASH` et `FAKE` suivent tous les clés étrangères. `FPE_ID` et `FPE_UUID` sont du chiffrement préservant le format : entier en entrée, entier en sortie (UUID en entrée, UUID en sortie), bijectif, donc les clés primaires restent uniques et les contraintes FK tiennent sur la cible sans désactiver les triggers.
+
+## Sous-ensembles
+
+PostgreSQL Anonymizer gère l'**échantillonnage** avec des règles `TABLESAMPLE`. Sa [documentation sur l'échantillonnage](https://postgresql-anonymizer.readthedocs.io/en/stable/sampling/) est franche : l'échantillonnage peut échouer quand des clés étrangères pointent vers la table échantillonnée, et extraire un sous-ensemble en maintenant l'intégrité référentielle n'est pas pris en charge — elle suggère d'extraire d'abord un sous-ensemble avec un autre outil, puis de l'anonymiser.
+
+C'est le terrain de Brume. Vous sélectionnez des lignes de départ avec des filtres SQL, et Brume copie chaque ligne située à au plus `fk_depth` sauts de clé étrangère, dans les deux sens, plus chaque parent dont ces lignes ont besoin. Le résultat est une petite base où chaque contrainte tient — voir [Extraire un sous-ensemble sans casser les clés étrangères](/fr/guides/subset-production-database-foreign-keys/).
+
+## Déterminisme
+
+PostgreSQL Anonymizer propose des **fonctions de pseudonymisation** déterministes (`anon.seeded_*`) : la même graine et le même sel donnent toujours la même fausse valeur. Ses fonctions de **faux**, en revanche, remplacent les données par des valeurs aléatoires mais plausibles.
+
+Dans Brume, chaque stratégie est déterministe et dépend de deux secrets (`BRUME_HMAC_SECRET`, `BRUME_FPE_KEY`) : la même entrée donne la même sortie d'une exécution à l'autre, d'une machine à l'autre, et sur toutes les versions d'une même version majeure. C'est ce qui garde les fixtures de test stables et permet à deux bases pseudonymisées séparément de rester joignables.
+
+## Quand PostgreSQL Anonymizer est le meilleur choix
+
+- Vous avez besoin de **masquage dynamique** : des personnes ou des outils qui interrogent la production sans devoir voir les identités.
+- Vous voulez des règles de masquage **dans la base**, déclarées en SQL à côté du schéma.
+- Vous avez besoin de fonctions que Brume n'offre pas : **bruit, généralisation, mélange, floutage d'images**, masquage conditionnel, vos propres fonctions SQL.
+- Vous avez besoin de **vues de masquage**, de **masquage de réplique** ou de masquage sur des data wrappers.
+- L'extension est disponible sur votre serveur ou chez votre fournisseur managé, et vous êtes à l'aise pour l'y exécuter.
+
+## Quand Brume est le meilleur choix
+
+- Vous avez besoin d'un **petit sous-ensemble cohérent** de la production, pas d'une copie complète.
+- Vous **ne pouvez pas ou ne voulez pas installer d'extension** sur le serveur de production.
+- Vous voulez des **clés primaires chiffrées** et chaque clé étrangère réécrite en conséquence, sans déclarer chaque colonne.
+- Vous voulez que **toutes** les valeurs soient déterministes et stables d'un rafraîchissement à l'autre, pour que tests et rapports de bug gardent leurs identifiants.
+- Vous voulez un **circuit de vérification préalable** : `brume scan` rédige les règles, `brume plan` compte les lignes et liste les colonnes personnelles non couvertes, `brume dry-run` exerce le pipeline, `brume audit --anonymity` mesure la k-anonymité.
+
+## Peut-on utiliser les deux ?
+
+Oui — ils ne se disputent pas le même travail. Une équipe peut utiliser le masquage dynamique de PostgreSQL Anonymizer pour les analystes qui interrogent la production, et Brume pour construire des bases de test et de staging pseudonymisées.
+
+## Guides liés
+
+- [Comment anonymiser une base PostgreSQL pour les tests](/fr/guides/anonymize-postgresql-database-for-testing/)
+- [Brume vs pganonymize](/fr/guides/brume-vs-pganonymize/)
+- [Pseudonymisation vs anonymisation : ce que dit le RGPD](/fr/guides/pseudonymization-vs-anonymization-gdpr/)
+
+<GuideCta />

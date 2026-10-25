@@ -1,0 +1,152 @@
+---
+title: Extraire un sous-ensemble de la prod sans casser les clés étrangères
+description: Pourquoi l'échantillonnage table par table casse l'intégrité référentielle, et comment extraire un sous-ensemble PostgreSQL cohérent avec un rayon de FK.
+head:
+  - tag: title
+    content: Sous-ensemble PostgreSQL sans casser les FK | Brume
+---
+
+import GuideCta from '../../../../components/GuideCta.astro';
+
+Une copie complète de la production est rarement ce dont un développeur a besoin. Elle est lente à restaurer, coûteuse à stocker, et contient bien plus de données personnelles qu'aucun test ou session de debug n'en exige — ce que le RGPD encadre explicitement avec le principe de **minimisation des données** (art. 5(1)(c)).
+
+Vous voulez donc un sous-ensemble. La difficulté n'est pas de choisir des lignes : c'est de choisir des lignes **qui tiennent encore ensemble**.
+
+## Pourquoi les extractions naïves cassent
+
+L'approche évidente consiste à découper chaque table séparément — une clause `WHERE` par table, ou `TABLESAMPLE` :
+
+```sql
+-- 1 % des utilisateurs, 1 % des commandes, tirés indépendamment
+SELECT * FROM users  TABLESAMPLE BERNOULLI (1);
+SELECT * FROM orders TABLESAMPLE BERNOULLI (1);
+```
+
+Les commandes conservées appartiennent pour la plupart à des utilisateurs qui ne l'ont pas été. Les charger dans une base avec les mêmes contraintes échoue sur la première clé étrangère, et le contournement habituel — désactiver les triggers ou supprimer les contraintes — vous laisse une base à laquelle votre application ne peut pas se fier.
+
+Les clés étrangères tirent dans **deux directions** :
+
+- **Vers les parents** — une `order` a besoin de son `user` et du `product` de chaque ligne, sinon la contrainte échoue.
+- **Vers les enfants** — une `order` sans ses `order_items` est valide pour PostgreSQL mais inutile pour tester la page de paiement.
+
+Un bon sous-ensemble suit les deux directions, et s'arrête quelque part.
+
+## Un rayon autour de lignes de départ
+
+Brume construit le sous-ensemble à partir de **lignes de départ** — celles que sélectionnent les filtres de `extraction.tables` — et copie chaque ligne située à au plus **`fk_depth` sauts de clé étrangère**, en comptant aussi bien les sauts vers les parents que vers les enfants.
+
+```yaml
+extraction:
+  fk_depth: 1
+  tables:
+    - table: orders
+      filter: "created_at >= '2025-01-01'"
+```
+
+Avec `orders` filtrée sur 2025 :
+
+| `fk_depth` | Lignes copiées |
+|---|---|
+| `1` | les commandes 2025, leurs `users`, leurs `order_items` |
+| `2` | + les autres commandes de ces utilisateurs (même hors filtre), les `products` des lignes de commande |
+| `3` | + les lignes de ces autres commandes, … |
+
+Reste le bord du rayon. Une ligne copiée peut référencer une ligne plus éloignée — une ligne de commande qui pointe vers un produit, à la profondeur `1`. C'est `orphan_policy` qui décide :
+
+| Valeur | Comportement |
+|---|---|
+| `KEEP_PARENTS` (défaut) | Les parents de chaque ligne copiée sont copiés aussi, quelle que soit leur distance — en remontant seulement, Brume ne redescend jamais depuis eux. **La cible ne contient jamais de clé étrangère qui pointe dans le vide.** |
+| `ALLOW_ORPHANS` | Le rayon est strict. Les références au-delà sont gardées telles quelles et signalées (`[ORPHANS]` dans les logs, `orphanReferences` dans le rapport JSON). Les jointures perdent ces lignes, et recréer les contraintes sur la cible échoue. |
+
+Avec la valeur par défaut, l'exemple 2025 vous donne les commandes, leurs utilisateurs, leurs lignes **et** les produits dont ces lignes ont besoin — une base autonome où chaque contrainte tient.
+
+## Extraire et pseudonymiser en une seule passe
+
+Choisir les lignes n'est que la moitié du travail : le sous-ensemble contient encore de vrais noms et de vrais emails. Brume transforme chaque colonne pendant la copie, dans la même exécution. Et comme les clés primaires peuvent être chiffrées avec `FPE_ID` ou `FPE_UUID`, les clés étrangères doivent recevoir **la même** transformation, sinon les jointures cassent à nouveau.
+
+Brume s'en charge : déclarez la règle sur la clé, elle s'applique à chaque colonne qui lui est liée par une clé étrangère.
+
+```yaml
+anonymization:
+  tables:
+    - table: users
+      columns:
+        - name: id
+          strategy: FPE_ID    # orders.user_id reçoit le même chiffrement
+        - name: email
+          strategy: FAKE
+          type: EMAIL
+```
+
+Le pas-à-pas complet est dans [Comment anonymiser une base PostgreSQL pour les tests](/fr/guides/anonymize-postgresql-database-for-testing/).
+
+## Trois sous-ensembles dont vous aurez besoin
+
+### Reproduire un bug de production
+
+Un rapport de bug mentionne `orders.id = 982331`. Vous voulez cette commande, son utilisateur, ses lignes — et rien d'autre :
+
+```yaml
+extraction:
+  fk_depth: 1
+  tables:
+    - table: orders
+      filter: "id = 982331"
+```
+
+Comme `FPE_ID` est déterministe, la commande arrive toujours sur le même identifiant cible. Notez-le : il sera toujours là après le prochain rafraîchissement.
+
+### Une fenêtre temporelle pour les tests d'intégration
+
+L'exemple 2025 ci-dessus. Commencez avec `fk_depth: 1` ; n'augmentez que lorsqu'un test a besoin de lignes absentes — les autres commandes des mêmes utilisateurs, par exemple.
+
+### Un tenant parmi d'autres
+
+```yaml
+extraction:
+  fk_depth: 1
+  tables:
+    - table: tenants
+      filter: "id = 42"
+    - table: users
+      filter: "tenant_id = 42"
+    - table: orders
+      filter: "tenant_id = 42"
+```
+
+:::caution[Le rayon traverse les tenants]
+`fk_depth` va dans les deux sens. Depuis une ligne partagée par plusieurs tenants — un plan, un pays, un produit — un saut de plus vers le bas atteint **les lignes d'autres tenants**. Appliquez le filtre tenant sur chaque table racine, gardez `fk_depth` bas, et vérifiez les volumes par table avant d'exécuter.
+:::
+
+## Vérifier avant de copier
+
+```bash
+brume plan
+```
+
+`plan` compte les lignes que chaque table recevra dans le rayon — **exactement** ce que copiera `brume execute` — sans rien écrire. Si `users` affiche soudain des millions de lignes à `fk_depth: 2`, vous le savez avant votre laptop.
+
+Une fois la copie faite, une requête rapide confirme qu'aucune clé étrangère ne pointe dans le vide :
+
+```sql
+-- Attendu : 0
+SELECT count(*)
+FROM order_items i
+LEFT JOIN products p ON p.id = i.product_id
+WHERE p.id IS NULL;
+```
+
+## Bon à savoir
+
+- **Chaque saut peut multiplier le nombre de lignes.** Sur un vrai schéma, `fk_depth: 3` peut représenter l'essentiel de la base. Commencez à `1`.
+- **Une table partitionnée compte pour une seule table.** Déclarez les filtres sur la table partitionnée, jamais sur ses partitions.
+- **Les vues, vues matérialisées et tables étrangères** ne sont pas des tables : on ne peut pas les filtrer, mais leurs définitions sont recréées sur la cible par la copie du schéma.
+- **`brume execute` reconstruit la cible** de zéro à chaque exécution. Un [mode fusion](/fr/roadmap/merge-mode/) incrémental est sur la roadmap.
+
+## Guides liés
+
+- [Comment anonymiser une base PostgreSQL pour les tests](/fr/guides/anonymize-postgresql-database-for-testing/)
+- [Copier la prod en staging en conformité RGPD](/fr/guides/copy-production-to-staging-gdpr/)
+- [Référence `brume.yml` — `extraction`](/fr/docs/configuration/#extraction)
+
+<GuideCta />

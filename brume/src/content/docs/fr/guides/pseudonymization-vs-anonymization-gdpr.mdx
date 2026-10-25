@@ -1,0 +1,131 @@
+---
+title: 'Pseudonymisation vs anonymisation : ce que dit le RGPD'
+description: 'Pseudonymisation (art. 4(5)) ou anonymisation (considérant 26) : définitions, critères de la CNIL et conséquences pour vos données de dev et de test.'
+head:
+  - tag: title
+    content: Pseudonymisation vs anonymisation selon le RGPD | Brume
+---
+
+import GuideCta from '../../../../components/GuideCta.astro';
+
+Dans les équipes techniques, « anonymiser la base » veut souvent dire « remplacer les noms et les emails ». Juridiquement, c'est presque toujours une **pseudonymisation** — et la différence n'a rien de théorique : des données anonymes sortent du RGPD, des données pseudonymisées y restent entièrement.
+
+Cette page reprend les textes, la doctrine de la CNIL, et ce que cela change pour une base de développement ou de test.
+
+:::note
+Cette page est une synthèse à visée pédagogique, pas un avis juridique. Validez votre cas avec votre DPO.
+:::
+
+## En bref
+
+| | Pseudonymisation | Anonymisation |
+|---|---|---|
+| **Texte** | RGPD, art. 4(5) | RGPD, considérant 26 |
+| **Ré-identification** | Possible avec des informations supplémentaires (clé, table de correspondance) | Impossible en pratique, de manière irréversible |
+| **Statut** | Données à caractère personnel : **le RGPD s'applique** | Plus des données personnelles : **le RGPD ne s'applique plus** |
+| **Techniques typiques** | Hachage à clé, chiffrement préservant le format, tokenisation, fausses valeurs déterministes | Agrégation, généralisation, ajout de bruit, suppression |
+| **Usage typique** | Dev, test, debug, analyses internes | Open data, statistiques publiées, partage sans obligations RGPD |
+
+## La pseudonymisation : article 4(5)
+
+> *« Pseudonymisation »* désigne le traitement de données à caractère personnel de telle façon que celles-ci ne puissent plus être attribuées à une personne concernée précise **sans avoir recours à des informations supplémentaires**, pour autant que ces informations supplémentaires soient conservées séparément et soumises à des mesures techniques et organisationnelles afin de garantir que les données à caractère personnel ne sont pas attribuées à une personne physique identifiée ou identifiable.
+> — **RGPD, art. 4(5)**
+
+Trois éléments à retenir :
+
+1. **Le lien existe toujours.** Il est simplement déplacé dans des « informations supplémentaires » : une clé de chiffrement, un secret HMAC, une table de correspondance.
+2. **Ces informations sont conservées séparément.** Une clé stockée à côté des données ne pseudonymise rien.
+3. **Elles sont protégées** par des mesures techniques et organisationnelles : contrôle d'accès, coffre-fort de secrets, journalisation.
+
+## L'anonymisation : considérant 26
+
+Le RGPD ne définit pas l'anonymisation dans ses articles. C'est le considérant 26 qui trace la frontière :
+
+> Les données à caractère personnel qui ont fait l'objet d'une pseudonymisation et qui pourraient être attribuées à une personne physique par le recours à des informations supplémentaires devraient être considérées comme des informations concernant une personne physique identifiable.
+
+> Il n'y a dès lors pas lieu d'appliquer les principes relatifs à la protection des données aux informations anonymes, à savoir les informations ne concernant pas une personne physique identifiée ou identifiable, ni aux données à caractère personnel rendues anonymes de telle manière que la personne concernée ne soit pas ou plus identifiable.
+> — **RGPD, considérant 26**
+
+Pour juger si une personne est identifiable, le même considérant demande de tenir compte de l'ensemble des moyens raisonnablement susceptibles d'être utilisés, par le responsable du traitement ou par un tiers — en tenant compte du coût, du temps nécessaire et de la technologie disponible.
+
+## Ce qu'en dit la CNIL
+
+La CNIL résume la différence dans sa page [L'anonymisation de données personnelles](https://www.cnil.fr/fr/technologies/lanonymisation-de-donnees-personnelles) :
+
+- l'anonymisation consiste à rendre impossible, en pratique, toute identification de la personne, « par quelque moyen que ce soit et de manière irréversible » ;
+- avec la pseudonymisation, les données « conservent donc un caractère personnel » ;
+- « L'opération de pseudonymisation est également réversible, contrairement à l'anonymisation. »
+
+Pour qu'un jeu de données soit réellement anonyme, la CNIL reprend les **trois critères** de l'avis 05/2014 du G29 :
+
+| Critère | Ce qui doit être impossible |
+|---|---|
+| **Individualisation** | Isoler un individu dans le jeu de données |
+| **Corrélation** | Relier entre eux des ensembles de données distincts concernant un même individu |
+| **Inférence** | Déduire, de façon quasi certaine, de nouvelles informations sur un individu |
+
+## Pourquoi une base relationnelle est (presque) toujours pseudonymisée
+
+Remplacer les noms et les emails ne suffit pas à satisfaire ces trois critères, surtout dans une base de données relationnelle :
+
+- **Les clés étrangères sont de la corrélation par construction.** Une base de test utile garde les commandes reliées à leurs clients, les paiements à leurs commandes. C'est précisément ce que le critère de corrélation interdit.
+- **Les quasi-identifiants individualisent.** Date de naissance + code postal + sexe suffisent souvent à isoler une personne, même sans nom. C'est ce que mesure la [k-anonymité](/fr/docs/k-anonymity/).
+- **La clé existe.** Un hachage, un chiffrement ou des fausses valeurs déterministes produisent toujours la même sortie pour la même entrée : quiconque détient la clé peut refaire le lien. C'est utile — les tests restent stables, les jointures fonctionnent — mais c'est la définition même de l'article 4(5).
+
+Conclusion pratique : une copie de base qui conserve sa structure et ses jointures est une **pseudonymisation**. La traiter comme anonyme est l'erreur à éviter.
+
+## Jurisprudence et lignes directrices récentes
+
+- **CJUE, 4 septembre 2025, CEPD c/ CRU ([C-413/23 P](https://curia.europa.eu/juris/liste.jsf?num=C-413/23)).** La Cour a jugé que des données pseudonymisées ne sont pas des données personnelles en toute hypothèse et pour toute personne : pour un destinataire qui n'a raisonnablement aucun moyen de ré-identifier les personnes, elles peuvent ne pas l'être. Pour le responsable du traitement qui détient les informations supplémentaires, en revanche, elles restent des données personnelles. Si vous pseudonymisez vos propres bases avec vos propres clés, c'est votre cas.
+- **CEPD (EDPB), [lignes directrices 01/2025 sur la pseudonymisation](https://www.edpb.europa.eu/our-work-tools/documents/public-consultations/2025/guidelines-012025-pseudonymisation_en)**, soumises à consultation publique en janvier 2025. Elles détaillent la mise en œuvre de la pseudonymisation et sa place dans les obligations du RGPD.
+
+## Ce que la pseudonymisation vous apporte quand même
+
+Rester dans le RGPD ne veut pas dire que la pseudonymisation ne sert à rien. Le règlement la cite explicitement :
+
+- **Art. 25(1)** — comme mesure de protection des données dès la conception ;
+- **Art. 32(1)(a)** — parmi les mesures de sécurité du traitement : « la pseudonymisation et le chiffrement des données à caractère personnel » ;
+- **Art. 6(4)(e)** — comme garantie appropriée lorsqu'on évalue la compatibilité d'un traitement ultérieur avec la finalité initiale ;
+- **Art. 89(1)** — comme garantie pour les traitements à des fins archivistiques dans l'intérêt public, de recherche scientifique ou historique, ou statistiques.
+
+Elle réduit le risque en cas de fuite, limite ce que voient les équipes, et documente une démarche de protection des données dès la conception.
+
+## Cas d'usage : dev, test, staging
+
+Le [guide RGPD de l'équipe de développement](https://github.com/LINCnil/Guide-RGPD-du-developpeur/blob/master/11-Tester%20vos%20applications.md) de la CNIL est clair :
+
+> Les données « réelles » de production ne **doivent pas être utilisées** pendant la phase de développement et de test. Utiliser les données personnelles issues de votre base de production à des fins de tests revient à les **détourner de leur finalité initiale**.
+
+Et plus loin : « il est toujours préférable d'utiliser des données fictives. A défaut, les environnement des tests doivent faire l'objet des mêmes mesures de sécurité que l'environnement de production. »
+
+Une grille de décision qui en découle :
+
+1. **Des données fictives suffisent ?** Fixtures, générateurs de fausses données : c'est la recommandation par défaut. Faites-le.
+2. **Vous avez besoin du réalisme de la production** — volumes, distributions, cas limites, reproduction d'un bug ? Une copie **pseudonymisée et minimisée** réduit fortement le risque, mais reste une donnée personnelle : analyse de compatibilité de la finalité (art. 6(4)), mesures de sécurité proches de la production, destinataires restreints, durée de conservation, inscription au registre des traitements — et validation par votre DPO.
+3. **Vous devez publier ou partager hors de tout cadre RGPD ?** Il faut une vraie anonymisation (agrégation, généralisation, bruit), vérifiée au regard des trois critères. Une copie pseudonymisée ne convient pas.
+
+## Où se situe Brume
+
+Brume fait de la **pseudonymisation au sens de l'article 4(5)**, et le dit :
+
+- Les « informations supplémentaires » sont la paire `BRUME_HMAC_SECRET` + `BRUME_FPE_KEY`. À conserver séparément, dans un coffre-fort de secrets.
+- Les transformations sont déterministes : les clés étrangères restent valides et les tests stables — et c'est précisément ce qui rend la sortie réversible pour qui détient les secrets.
+- La **minimisation** se fait par sous-ensemble : filtres et rayon de clés étrangères ([guide](/fr/guides/subset-production-database-foreign-keys/)).
+- `brume audit --anonymity` [mesure la k-anonymité](/fr/docs/k-anonymity/) du résultat — une mesure du risque résiduel, pas un certificat d'anonymat.
+
+La page [RGPD & conformité](/fr/docs/gdpr/) détaille la position juridique, les articles couverts et la checklist à partager avec votre DPO.
+
+## À retenir
+
+- Pseudonymisé = **toujours** des données personnelles. Anonyme = impossible à ré-identifier, en pratique et de manière irréversible.
+- Une base qui garde ses jointures n'est pas anonyme.
+- La pseudonymisation est une mesure de sécurité reconnue par le RGPD, pas une sortie du RGPD.
+- Pour les tests, la CNIL privilégie les données fictives ; une copie pseudonymisée de la production doit être justifiée, minimisée et protégée.
+
+## Guides liés
+
+- [Copier la prod en staging en conformité RGPD](/fr/guides/copy-production-to-staging-gdpr/)
+- [Comment anonymiser une base PostgreSQL pour les tests](/fr/guides/anonymize-postgresql-database-for-testing/)
+- [Extraire un sous-ensemble de la prod sans casser les clés étrangères](/fr/guides/subset-production-database-foreign-keys/)
+
+<GuideCta />

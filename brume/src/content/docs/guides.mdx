@@ -1,0 +1,25 @@
+---
+title: PostgreSQL pseudonymization guides
+description: Practical guides to anonymize PostgreSQL test data, subset production without breaking foreign keys, and copy prod to staging under the GDPR.
+---
+
+import GuideCta from '../../components/GuideCta.astro';
+
+Task-oriented guides built on the [Brume documentation](/docs/). Each one starts from a real problem, shows the full configuration and the commands, and says honestly where the limits are.
+
+## Hands-on guides
+
+- [**How to anonymize a PostgreSQL database for testing**](/guides/anonymize-postgresql-database-for-testing/) — from a production database to a pseudonymized, FK-coherent test database: complete `brume.yml`, commands, expected result.
+- [**Subsetting a production database without breaking foreign keys**](/guides/subset-production-database-foreign-keys/) — why naive subsets break, and how a foreign-key radius around a few seed rows keeps every constraint valid.
+- [**Copy production data to staging safely (GDPR)**](/guides/copy-production-to-staging-gdpr/) — a refresh pipeline where real values never land in staging, and what the GDPR still expects from you.
+
+## Understand the law
+
+- [**Pseudonymization vs anonymization: what the GDPR says**](/guides/pseudonymization-vs-anonymization-gdpr/) — Art. 4(5), Recital 26, the CNIL's three criteria, and what it means for dev and test data.
+
+## Comparisons
+
+- [**Brume vs PostgreSQL Anonymizer**](/guides/brume-vs-postgresql-anonymizer/) — external CLI vs in-database extension: masking modes, keys, subsetting, determinism. And when the extension is the better pick.
+- [**Brume vs pganonymize**](/guides/brume-vs-pganonymize/) — two YAML-driven tools, two designs: in-place rewriting vs copy-and-transform.
+
+<GuideCta />

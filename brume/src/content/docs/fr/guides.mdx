@@ -1,0 +1,25 @@
+---
+title: Guides de pseudonymisation PostgreSQL
+description: Guides pratiques pour anonymiser des données de test PostgreSQL, extraire un sous-ensemble sans casser les FK et copier la prod en staging (RGPD).
+---
+
+import GuideCta from '../../../components/GuideCta.astro';
+
+Des guides orientés tâche, construits sur la [documentation de Brume](/fr/docs/). Chacun part d'un problème réel, montre la configuration complète et les commandes, et dit honnêtement où sont les limites.
+
+## Guides pratiques
+
+- [**Comment anonymiser une base PostgreSQL pour les tests**](/fr/guides/anonymize-postgresql-database-for-testing/) — d'une base de production à une base de test pseudonymisée et cohérente : `brume.yml` complet, commandes, résultat attendu.
+- [**Extraire un sous-ensemble de la prod sans casser les clés étrangères**](/fr/guides/subset-production-database-foreign-keys/) — pourquoi les extractions naïves cassent, et comment un rayon de clés étrangères autour de quelques lignes garde chaque contrainte valide.
+- [**Copier la prod en staging en conformité RGPD**](/fr/guides/copy-production-to-staging-gdpr/) — un rafraîchissement où les vraies valeurs n'arrivent jamais en staging, et ce que le RGPD attend encore de vous.
+
+## Comprendre le droit
+
+- [**Pseudonymisation vs anonymisation : ce que dit le RGPD**](/fr/guides/pseudonymization-vs-anonymization-gdpr/) — art. 4(5), considérant 26, les trois critères de la CNIL, et ce que cela implique pour les données de dev et de test.
+
+## Comparatifs
+
+- [**Brume vs PostgreSQL Anonymizer**](/fr/guides/brume-vs-postgresql-anonymizer/) — CLI externe contre extension dans la base : modes de masquage, clés, sous-ensembles, déterminisme. Et quand l'extension est le meilleur choix.
+- [**Brume vs pganonymize**](/fr/guides/brume-vs-pganonymize/) — deux outils pilotés par YAML, deux conceptions : réécriture sur place contre copie avec transformation.
+
+<GuideCta />

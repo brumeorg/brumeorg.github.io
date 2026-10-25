@@ -98,11 +98,17 @@ body:has(.hero)::after {
 	max-height: 3.5rem;
 }
 
+.hero .brume-hero-cli,
 .hero [data-page-title] {
 	font-family: 'Asap Condensed', sans-serif;
 	font-weight: 500;
 	letter-spacing: -0.01em;
-	line-height: 0.95;
+}
+
+/* SEO headline under the `brume <cmd>` visual */
+.hero [data-page-title] {
+	line-height: 1.15;
+	max-width: 28ch;
 }
 
 /* CLI typewriter title — brume <cmd>

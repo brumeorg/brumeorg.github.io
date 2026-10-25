@@ -1,0 +1,85 @@
+---
+title: Brume vs pganonymize for PostgreSQL anonymization
+description: 'Brume vs pganonymize: in-place rewriting or copy-and-transform? Determinism, foreign keys, subsetting, workflow — and when each tool fits best.'
+---
+
+import GuideCta from '../../../components/GuideCta.astro';
+
+[pganonymize](https://github.com/rheinwerk-verlag/pganonymize) and Brume are both command-line tools driven by a YAML file, both aimed at taking personal data out of PostgreSQL databases. Under the surface they work very differently, and each fits different situations — this page tries to say which, fairly.
+
+:::note[Sources]
+Statements about pganonymize come from its [README](https://github.com/rheinwerk-verlag/pganonymize), its [documentation](https://pganonymize.readthedocs.io/en/latest/schema.html) and its source code (release 0.13.0, checked in October 2026). Statements about Brume come from [this site's docs](/docs/). If something is out of date, [tell us](https://github.com/brumeorg/Brume/issues).
+:::
+
+## At a glance
+
+| | pganonymize | Brume |
+|---|---|---|
+| **Form** | Python package (`pip install pganonymize`), compatible with Python 2.7 | Native CLI from apt, dnf or Homebrew |
+| **How it works** | Connects to a database and **rewrites its tables in place** | **Copies** a source into a separate target, transforming on the fly; the source is never modified |
+| **Output** | The anonymized database itself, optionally dumped with `--dump-file` | Another PostgreSQL database, or a `.sql` file |
+| **Rules** | YAML schema: tables, fields, provider per field | YAML `brume.yml`: tables, columns, strategy + semantic type |
+| **Transformations** | `fake.*` (any Faker provider), `choice`, `clear`, `mask`, `partial_mask`, `md5`, `set`, `uuid4`, `update_json` | `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `DATE_SHIFT`, `KEEP` |
+| **Determinism** | `md5` and `set` are deterministic; `fake.*`, `choice` and `uuid4` produce random values | Every strategy is keyed and deterministic, stable across releases of a major version |
+| **Keys and foreign keys** | Not described in the documentation | Rules on a key are applied to every column linked to it by a foreign key; PKs encrypted without collisions |
+| **Subsetting** | No — `search` and `excludes` choose which rows get anonymized; `truncate` empties whole tables | Filters + foreign-key radius (`fk_depth`), parents kept so no FK dangles |
+| **Pre-flight checks** | `--dry-run` (changes are not committed) | `scan`, `plan`, `dry-run`, `audit --anonymity` |
+| **License** | MIT | Apache 2.0 |
+
+## In place vs copy-and-transform
+
+**pganonymize rewrites the database it connects to.** For each table it reads the rows, computes new values, and writes them back with `UPDATE`. Because of that, you run it on a **copy** — typically a restored backup in a non-production environment — never on production itself. The usual flow:
+
+```
+prod backup ──▶ restore into scratch DB ──▶ pganonymize (in place) ──▶ --dump-file
+```
+
+**Brume reads the source and writes elsewhere.** It connects to production with a read-only account, transforms each row as it streams, and writes to a target database or a `.sql` file:
+
+```
+prod (read-only) ──▶ brume (transform on the fly) ──▶ test DB or .sql
+```
+
+The practical difference: with pganonymize, an **unmasked copy** of the data exists somewhere until the anonymization finishes — you need to secure and clean it up. With Brume, real values never land outside the source. On the other hand, pganonymize needs no second database: if you already have a restored copy and just want to scrub it, it does that directly.
+
+## Determinism and stable test data
+
+pganonymize's `fake.*` providers use the Faker library, which generates random data for each row: run it twice and you get different names. `choice` and `uuid4` are random too. `md5` is deterministic — it's a plain MD5 of the original value, with no secret key, so anyone holding a candidate value can recompute it.
+
+Brume's strategies are all deterministic and **keyed** by two secrets. `HASH` is an HMAC-SHA256, `FAKE` values are seeded by an HMAC of the original, `FPE_ID` / `FPE_UUID` use format-preserving encryption. Same input + same secrets = same output, every run. That keeps test fixtures stable and bug reports reproducible ("user `12227206` still fails after the refresh") — and without the secrets, the output can't be recomputed from a guess.
+
+## Primary keys and foreign keys
+
+pganonymize's documentation doesn't describe how keys are handled: it identifies rows by their `primary_key` (default `id`) to write them back, and suggests listing related tables together under `truncate` so they can be emptied without a constraint error.
+
+Brume treats keys as first-class. `FPE_ID` encrypts integer ids into integers, `FPE_UUID` UUIDs into UUIDs, both without collisions — and Brume applies the same transformation to every foreign key that references them. Constraints hold on the target without disabling triggers.
+
+## Subsetting
+
+pganonymize works on the whole database it's pointed at. Its `search` option takes a SQL condition that selects **which rows to anonymize** — rows that don't match are left as they are — and `excludes` skips rows matching a pattern. `truncate` empties whole tables you don't need.
+
+Brume selects **which rows to copy**: seed rows from SQL filters, then every row within `fk_depth` foreign-key hops, plus the parents they need. The result is a small, self-contained database — see [Subsetting without breaking foreign keys](/guides/subset-production-database-foreign-keys/).
+
+## When pganonymize is the better choice
+
+- You already have a **restored copy** and want to scrub it in place, without a second database.
+- Your team lives in **Python** and wants `pip install` — including on legacy Python 2.7 platforms.
+- You want the breadth of **Faker's providers** (`fake.*`) for fields Brume's semantic types don't cover.
+- You need `choice`, `set` or `update_json` (replace JSON values by data type) semantics, or to **truncate** whole tables.
+- Random, non-reproducible values are fine — or even preferred — for your use case.
+
+## When Brume is the better choice
+
+- You don't want an **unmasked copy** of production to exist outside production, even temporarily.
+- You need **deterministic, keyed** output: stable fixtures, ids that survive refreshes, joins across databases pseudonymized separately.
+- Your **primary keys** need pseudonymizing too, with every foreign key following.
+- You need a **subset**, not a scrubbed full copy.
+- You want **guardrails** before writing: `plan` lists PII-looking columns no rule covers and refuses configurations that can only fail; `audit --anonymity` measures residual re-identification risk.
+
+## Related guides
+
+- [How to anonymize a PostgreSQL database for testing](/guides/anonymize-postgresql-database-for-testing/)
+- [Brume vs PostgreSQL Anonymizer](/guides/brume-vs-postgresql-anonymizer/)
+- [Copy production data to staging safely (GDPR)](/guides/copy-production-to-staging-gdpr/)
+
+<GuideCta />

@@ -1,0 +1,261 @@
+---
+title: How to anonymize a PostgreSQL database for testing
+description: Turn a production PostgreSQL database into a pseudonymized, FK-coherent test database with Brume — full brume.yml, commands and expected result.
+---
+
+import GuideCta from '../../../components/GuideCta.astro';
+
+Tests run against realistic data catch bugs that hand-written fixtures miss: odd encodings, skewed volumes, edge cases nobody thought of. But a raw copy of production puts every customer's personal data in an environment with wider access and weaker controls.
+
+This tutorial builds a test database from production with Brume: a **subset** of the rows, with personal data **replaced on the fly**, primary keys **encrypted**, and every foreign key **still valid**.
+
+:::note[Anonymize or pseudonymize?]
+People search for "anonymize", but what Brume produces is a **pseudonymization** in the sense of GDPR Art. 4(5): the output can be linked back to real people with your secrets, so it remains personal data. See [Pseudonymization vs anonymization](/guides/pseudonymization-vs-anonymization-gdpr/) before you share the result.
+:::
+
+## What you'll build
+
+A classic e-commerce schema:
+
+```
+users ◀── orders ◀── order_items ──▶ products
+```
+
+The goal: a test database holding the orders placed since 1 January 2025, the users who placed them, their items and the products those items reference — with names, emails, phones, addresses and free text pseudonymized, and `users.id` / `orders.id` encrypted consistently everywhere they appear.
+
+## Prerequisites
+
+- Brume installed — see [Getting started](/docs/getting-started/) (Debian/Ubuntu, Fedora/CentOS, macOS).
+- `pg_dump` on `PATH`, with a **major version at least the source's**. Brume uses it to copy the schema.
+- A **target**: an empty PostgreSQL database, or a writable directory if you prefer a `.sql` file ([variant below](#variant-write-a-sql-file-instead)).
+
+## Step 1 — Create a read-only account on the source
+
+Brume never writes to the source. A read-only account makes sure a typo can't change that:
+
+```sql
+CREATE ROLE brume_reader WITH LOGIN PASSWORD '...';
+GRANT CONNECT ON DATABASE shop TO brume_reader;
+GRANT USAGE ON SCHEMA public TO brume_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO brume_reader;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT ON TABLES TO brume_reader;
+```
+
+## Step 2 — Configure connections and secrets
+
+Scaffold a `.env.brume` for a PostgreSQL target:
+
+```bash
+brume init jdbc
+```
+
+Generate two high-entropy secrets. `BRUME_HMAC_SECRET` needs at least 16 characters (32+ recommended); `BRUME_FPE_KEY` must be **exactly 16, 24 or 32 characters**:
+
+```bash
+openssl rand -base64 48   # → BRUME_HMAC_SECRET (64 characters)
+openssl rand -hex 16      # → BRUME_FPE_KEY (32 characters)
+```
+
+Then fill in `.env.brume`:
+
+```bash
+# Secrets — the "additional information" of GDPR Art. 4(5). Never commit them.
+BRUME_HMAC_SECRET=<output of openssl rand -base64 48>
+BRUME_FPE_KEY=<output of openssl rand -hex 16>
+
+# Source (read-only)
+BRUME_SOURCE_HOST=db.prod.internal
+BRUME_SOURCE_DB=shop
+BRUME_SOURCE_USER=brume_reader
+BRUME_SOURCE_PASSWORD=...
+BRUME_SOURCE_SSLMODE=require
+BRUME_SCHEMA=public
+
+# Target — an empty test database
+BRUME_SINK_TYPE=JDBC
+BRUME_TARGET_HOST=localhost
+BRUME_TARGET_PORT=5432
+BRUME_TARGET_DB=shop_test
+BRUME_TARGET_USER=app
+BRUME_TARGET_PASSWORD=...
+```
+
+Validate the configuration — secret lengths, FPE key, sink settings:
+
+```bash
+brume diag
+```
+
+`diag` doesn't connect to anything. Connectivity and the `pg_dump` version are checked by `plan` and `execute` before they read a single row — see [Preflight checks](/docs/cli/#preflight-checks).
+
+Every variable is documented in the [`.env.brume` reference](/docs/env/).
+
+## Step 3 — Bootstrap `brume.yml` from the schema
+
+```bash
+brume scan
+```
+
+`scan` reads **column names and types only** — never your data — and writes a pre-filled `brume.yml`: columns that look like PII get a rule (`email` → `FAKE EMAIL`, `phone` → `MASK PHONE`, `password` → `HASH`…), primary keys get `FPE_ID` or `FPE_UUID`, foreign keys are left out on purpose because they inherit the rule of the key they reference.
+
+It is a **proposal** matched on names: review every line. The `extraction` block is left as a TODO — which rows to copy is a business decision.
+
+## Step 4 — The complete `brume.yml`
+
+After review, the file looks like this:
+
+```yaml
+extraction:
+  fk_depth: 1                     # radius: the 2025 orders, their users, their items
+  tables:
+    - table: orders
+      filter: "created_at >= '2025-01-01'"
+
+anonymization:
+  tables:
+    - table: users
+      columns:
+        - name: id
+          strategy: FPE_ID        # also applied to orders.user_id, automatically
+        - name: email
+          strategy: FAKE
+          type: EMAIL
+        - name: first_name
+          strategy: FAKE
+          type: FIRST_NAME
+        - name: last_name
+          strategy: FAKE
+          type: LAST_NAME
+        - name: phone
+          strategy: MASK
+          type: PHONE
+        - name: birth_date
+          strategy: DATE_SHIFT    # ± up to 30 days, keeps age cohorts
+        - name: password_hash
+          strategy: HASH
+        - name: notes
+          strategy: NULLIFY       # free text: drop it (column must be nullable)
+
+    - table: orders
+      columns:
+        - name: id
+          strategy: FPE_ID        # also applied to order_items.order_id
+        - name: shipping_address
+          strategy: FAKE
+          type: ADDRESS
+        - name: metadata
+          strategy: FAKE
+          type: JSONB
+          json_paths:
+            - path: $.contact.email
+              type: EMAIL
+            - path: $.contact.phone
+              type: PHONE
+```
+
+Why these choices:
+
+| Column | Rule | Reason |
+|---|---|---|
+| `users.id`, `orders.id` | `FPE_ID` | Format-preserving encryption: integer in, integer out, no collision. Brume finds every foreign key pointing to the column and rewrites it with the same encryption. |
+| `email`, names, `shipping_address` | `FAKE` + type | Realistic values, so validation code and screenshots still work. Deterministic: the same real value always gives the same fake. |
+| `phone` | `MASK` | Keeps the shape (prefix, last digits) for support-style debugging. Refused on a `UNIQUE` column — use `FAKE` there. |
+| `birth_date` | `DATE_SHIFT` | Shifts each date by a deterministic number of days, so age distributions stay usable. |
+| `password_hash` | `HASH` | Keyed HMAC-SHA256: opaque, stable, never displayed. |
+| `notes` | `NULLIFY` | Free text can hold anything. Dropping it is the strongest minimization. |
+| `metadata` | `FAKE` + `JSONB` | Only the listed paths are rewritten; the rest of the document is kept. |
+| `products` (undeclared) | `KEEP` | No personal data. Undeclared columns are copied as-is. |
+
+`products` is copied even though it's not in `extraction.tables`: with the default `orphan_policy: KEEP_PARENTS`, every parent a copied row references comes along, so no foreign key dangles. The details are in the [`brume.yml` reference](/docs/configuration/) and in [Pseudonymization strategies](/docs/strategies/).
+
+## Step 5 — Plan: what will be copied, what isn't covered
+
+```bash
+brume plan
+```
+
+`plan` is read-only. It counts the rows each table will receive — exactly what `execute` will copy — and lists **columns that look like PII but have no rule**. Any column on that list will be copied as-is: add a rule, or an explicit `strategy: KEEP` to document that it's safe.
+
+`plan` also refuses configurations that can only fail — `NULLIFY` on a `NOT NULL` column, `MASK` on a `UNIQUE` column — with exit code `1`, before anything is written.
+
+## Step 6 — Dry run: exercise the whole pipeline
+
+```bash
+brume dry-run
+```
+
+Extraction, transformation and write all run, but the write goes nowhere. This catches what `plan` can't: JSONB paths that never resolve, type mismatches, foreign-key resolution failures.
+
+## Step 7 — Execute
+
+```bash
+brume execute
+```
+
+Brume copies the schema with `pg_dump`, streams the selected rows from the source, transforms each column and writes to `shop_test`. It ends with a per-table summary and the total wall-time.
+
+## Expected result
+
+**The rows `plan` announced**: the 2025 orders, their users, their order items, the products those items reference. Nothing else.
+
+**Personal data replaced.** Illustration — the exact fake values depend on your secrets and locale:
+
+| Column | Source | Target |
+|---|---|---|
+| `users.id` | `1` | `12227206` |
+| `orders.user_id` | `1` | `12227206` — same value, the join still works |
+| `users.email` | `jane.doe@acme.io` | a fake address such as `alice.smith@example.com` |
+| `users.phone` | `+33 6 12 34 56 78` | `+33 6 ** ** ** 78` |
+| `users.birth_date` | `1984-03-12` | a date within ±30 days |
+| `users.notes` | free text | `NULL` |
+
+`FPE_ID` output is an integer, but **not of the same length**: small ids come out longer. Ids up to 2,147,483,647 stay within the `integer` range; larger ones need a `bigint`.
+
+**Foreign keys valid.** The constraints were never disabled. You can check it yourself on the target:
+
+```sql
+-- Expected: 0 — every order points to an existing user
+SELECT count(*)
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+WHERE u.id IS NULL;
+```
+
+**Reproducible.** Run `brume execute` again with the same secrets and you get the same values. A bug reproduced on `users.id = 12227206` today is still on `12227206` after the next refresh. This holds across all releases of the same major version.
+
+**Collisions reported, not hidden.** If two rows end up with the same pseudonymized value on a `UNIQUE` column, the second one is not written and the loss is reported per table (`[UNIQUE_COLLISION]` in the logs). For zero collisions on a unique column, use `HASH`, `FPE_ID` or `FPE_UUID` — see [UNIQUE columns and collisions](/docs/strategies/#unique-columns-and-collisions).
+
+## Variant: write a `.sql` file instead
+
+No target database at hand, or you want to hand a file to a reviewer? Scaffold the dump sink:
+
+```bash
+brume init dump
+```
+
+```bash
+BRUME_SINK_TYPE=DUMP
+BRUME_SINK_OUTPUT_PATH=./out/shop_test.sql.gz
+BRUME_SINK_COMPRESSION=GZIP     # NONE | GZIP | ZSTD
+```
+
+`brume execute` then writes the schema and the pseudonymized rows to the file. Restore it anywhere:
+
+```bash
+gunzip -c ./out/shop_test.sql.gz | psql -h localhost -U app -d shop_test
+```
+
+## Before you share the database
+
+- **Treat it as personal data.** Limit who can access it and set a retention period. The [GDPR & compliance](/docs/gdpr/) page has a DPO checklist.
+- **Protect the secrets** like the source data itself: whoever holds `BRUME_HMAC_SECRET` and `BRUME_FPE_KEY` holds the link back to real people.
+- **Measure the residual risk.** Combinations like birth date + ZIP code + gender can single people out even without names. [`brume audit --anonymity`](/docs/k-anonymity/) measures it.
+
+## Related guides
+
+- [Subsetting a production database without breaking foreign keys](/guides/subset-production-database-foreign-keys/) — choosing `fk_depth` and filters.
+- [Copy production data to staging safely (GDPR)](/guides/copy-production-to-staging-gdpr/) — the same pipeline, automated.
+- [Pseudonymization vs anonymization: what the GDPR says](/guides/pseudonymization-vs-anonymization-gdpr/)
+
+<GuideCta />

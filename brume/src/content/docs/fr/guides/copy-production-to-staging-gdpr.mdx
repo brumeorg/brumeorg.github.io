@@ -1,0 +1,108 @@
+---
+title: Copier la prod en staging en conformité RGPD
+description: Rafraîchir une base PostgreSQL de staging depuis la production sans copier d'identités réelles — pipeline, job CI et ce que le RGPD exige encore.
+---
+
+import GuideCta from '../../../../components/GuideCta.astro';
+
+Un staging n'est utile que s'il ressemble à la production. Le chemin le plus court — restaurer la sauvegarde de la nuit — copie aussi le nom, l'email et l'adresse de chaque client dans un environnement accessible à plus de monde, moins protégé, et dont les copies vivent plus longtemps.
+
+Ce guide met en place un rafraîchissement de staging où **les vraies valeurs n'arrivent jamais en staging**, et dit honnêtement ce que le RGPD attend encore une fois que c'est le cas.
+
+## Ce que disent le RGPD et la CNIL
+
+- **Réutiliser les données de production pour des tests est une nouvelle finalité.** Le [guide RGPD de l'équipe de développement](https://github.com/LINCnil/Guide-RGPD-du-developpeur/blob/master/11-Tester%20vos%20applications.md) de la CNIL l'écrit sans détour : « Les données « réelles » de production ne doivent pas être utilisées pendant la phase de développement et de test. » Il est « toujours préférable d'utiliser des données fictives. A défaut, les environnement des tests doivent faire l'objet des mêmes mesures de sécurité que l'environnement de production. »
+- **Des données pseudonymisées restent des données personnelles.** Considérant 26 du RGPD : des données qui pourraient être attribuées à une personne par le recours à des informations supplémentaires « devraient être considérées comme des informations concernant une personne physique identifiable ». Un staging pseudonymisé reste dans le champ du RGPD.
+- **Mais la pseudonymisation est la mesure que le RGPD cite.** Elle figure parmi les garanties appropriées pour évaluer une nouvelle finalité (art. 6(4)(e)), parmi les mesures de sécurité (art. 32(1)(a)) et comme moyen de protection des données dès la conception (art. 25(1)).
+
+En pratique : si des fixtures synthétiques suffisent, utilisez-les. Quand le staging a besoin du réalisme de la production — volumes, distributions, cas limites, reproduction de bugs — une copie **pseudonymisée et minimisée**, traitée comme une donnée personnelle et validée avec votre DPO, est le compromis défendable. Le volet juridique est détaillé dans [Pseudonymisation vs anonymisation](/fr/guides/pseudonymization-vs-anonymization-gdpr/).
+
+## Le pipeline
+
+```
+prod (lecture seule) ──▶ brume : filtre + transformation ──▶ staging
+                          secrets issus de votre coffre-fort
+```
+
+1. **Lire avec un compte en lecture seule.** Brume n'écrit jamais sur la source ; le compte le garantit. Les droits sont dans la [référence `.env.brume`](/fr/docs/env/#créer-un-compte-en-lecture-seule-sur-la-source).
+2. **Transformer à la volée.** Les lignes sont pseudonymisées entre la source et la cible : le staging ne reçoit jamais une vraie valeur, et il n'y a pas de copie intermédiaire en clair à nettoyer.
+3. **Ne copier que ce dont le staging a besoin.** Des filtres et un rayon de clés étrangères sélectionnent un sous-ensemble cohérent — voir [Extraire un sous-ensemble sans casser les clés étrangères](/fr/guides/subset-production-database-foreign-keys/).
+4. **Déclarer les règles dans un fichier relu.** `brume.yml` vit dans git et passe en revue de code ; votre DPO peut le lire. `brume scan` en rédige une première version depuis le schéma ; `brume plan` liste les colonnes d'apparence personnelle qu'aucune règle ne couvre.
+5. **Garder les secrets dans un coffre-fort.** `BRUME_HMAC_SECRET` et `BRUME_FPE_KEY` sont les « informations supplémentaires » de l'art. 4(5). Qui les détient peut relier le staging aux personnes réelles.
+6. **Rafraîchir à intervalle régulier.** Mêmes secrets, même sortie : un utilisateur ou une commande que la QA référence garde le même identifiant pseudonymisé d'un rafraîchissement à l'autre.
+
+## Un rafraîchissement hebdomadaire avec GitHub Actions
+
+Commitez `brume.yml` à la racine du dépôt, stockez les secrets dans le gestionnaire de secrets de la CI, et planifiez le job :
+
+```yaml
+# .github/workflows/refresh-staging.yml
+name: Refresh staging from prod
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # dimanche 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4        # récupère brume.yml
+      - name: Install pg_dump
+        run: |
+          # Version majeure >= celle de votre base de production
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+      - name: Install Brume
+        run: |
+          curl -1sLf 'https://dl.cloudsmith.io/public/brume/brume/setup.deb.sh' | sudo -E bash
+          sudo apt-get install -y brume
+      - name: Pseudonymize prod into staging
+        env:
+          BRUME_HMAC_SECRET:     ${{ secrets.BRUME_HMAC_SECRET }}
+          BRUME_FPE_KEY:         ${{ secrets.BRUME_FPE_KEY }}
+          BRUME_SOURCE_HOST:     ${{ secrets.PROD_HOST }}
+          BRUME_SOURCE_DB:       app_production
+          BRUME_SOURCE_USER:     brume_reader
+          BRUME_SOURCE_PASSWORD: ${{ secrets.PROD_RO_PASSWORD }}
+          BRUME_SOURCE_SSLMODE:  require
+          BRUME_SCHEMA:          public
+          BRUME_TARGET_HOST:     ${{ secrets.STAGING_HOST }}
+          BRUME_TARGET_PORT:     5432
+          BRUME_TARGET_DB:       app_staging
+          BRUME_TARGET_USER:     app
+          BRUME_TARGET_PASSWORD: ${{ secrets.STAGING_PASSWORD }}
+        run: |
+          brume diag      # valide les secrets et la configuration
+          brume plan      # vérifie la connexion source, refuse les configurations vouées à l'échec
+          brume execute --json 2> brume-run.jsonl
+```
+
+Sans fichier `.env.brume`, Brume lit sa configuration dans les variables d'environnement du processus : le job n'a besoin de rien d'autre. `--json` produit des logs structurés à archiver ou à envoyer à votre SIEM.
+
+## À savoir avant de basculer
+
+- **Chaque exécution reconstruit le staging.** `brume execute` recrée la cible de zéro : les comptes de test ou fixtures ajoutés à la main sur le staging disparaissent au rafraîchissement suivant. Recréez-les avec un script de seed après l'exécution. Un [mode fusion](/fr/roadmap/merge-mode/) incrémental est sur la roadmap.
+- **Changer les secrets change toutes les valeurs.** De même pour le passage à une nouvelle version majeure de Brume. Planifiez-le comme une bascule — voir [Rotation des secrets](/fr/docs/operations/#rotation-des-secrets).
+- **Les collisions sont signalées, pas cachées.** Une ligne dont la valeur pseudonymisée entre en collision sur une colonne `UNIQUE` n'est pas écrite ; la perte est comptée par table. Utilisez `HASH`, `FPE_ID` ou `FPE_UUID` sur les colonnes qui doivent garder toutes leurs lignes.
+- **Le texte libre est la fuite classique.** Commentaires, notes, messages au support peuvent contenir n'importe quoi. Passez-les en `NULLIFY` sauf si un test en a vraiment besoin.
+
+## Le staging reste une donnée personnelle
+
+La copie pseudonymisée doit être traitée comme telle :
+
+- Restreignez l'accès aux personnes qui en ont besoin, avec vos rôles de base de données habituels.
+- Fixez-lui une durée de conservation.
+- Inscrivez le traitement à votre registre des activités de traitement (art. 30) — la [page RGPD](/fr/docs/gdpr/#citer-brume-dans-votre-registre-des-traitements) propose une formulation.
+- Mesurez le risque résiduel de ré-identification avec [`brume audit --anonymity`](/fr/docs/k-anonymity/).
+- Ne qualifiez jamais le jeu de données d'« anonyme » dans la documentation ou les contrats.
+
+La [checklist DPO](/fr/docs/gdpr/#checklist-dpo) complète est la page à partager avant la première exécution.
+
+## Guides liés
+
+- [Comment anonymiser une base PostgreSQL pour les tests](/fr/guides/anonymize-postgresql-database-for-testing/) — le même flux, pas à pas, sur un poste de dev.
+- [Extraire un sous-ensemble de la prod sans casser les clés étrangères](/fr/guides/subset-production-database-foreign-keys/)
+- [Pseudonymisation vs anonymisation : ce que dit le RGPD](/fr/guides/pseudonymization-vs-anonymization-gdpr/)
+
+<GuideCta />

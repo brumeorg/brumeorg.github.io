@@ -2,6 +2,7 @@
 	"skipLink.label": "Aller au contenu",
 	"page.draft": "Brouillon",
 	"header.docs": "Docs",
+	"header.guides": "Guides",
 	"header.roadmap": "Roadmap",
 	"header.support": "Support",
 	"header.enterprise": "Entreprise",
@@ -27,12 +28,16 @@
 	"enterprise.form.labelEmail": "Email :",
 	"enterprise.form.labelCompany": "Entreprise :",
 	"enterprise.form.labelTeam": "Équipe :",
-	"enterprise.form.sentVia": "Envoyé depuis brumeorg.github.io/fr/enterprise",
+	"enterprise.form.sentVia": "Envoyé depuis www.brume.software/fr/enterprise",
 	"roadmap.packaging.blurb": "Comment Brume est construit et livré.",
 	"roadmap.engine.blurb": "Ce que Brume fait et ce qu'il supporte.",
 	"roadmap.status.planned": "Planifié",
 	"roadmap.status.exploration": "Exploration",
 	"install.label.debian": "debian/ubuntu",
 	"install.label.rhel": "rhel/fedora",
-	"install.label.macos": "macos"
+	"install.label.macos": "macos",
+	"guides.cta.title": "Essayez Brume sur votre propre schéma",
+	"guides.cta.lead": "Installez la CLI, écrivez un brume.yml et obtenez une copie pseudonymisée et cohérente de vos données PostgreSQL. Besoin d’un SLA, du SSO ou de types de PII sur mesure ? Parlons Enterprise.",
+	"guides.cta.quickstart": "Démarrage rapide",
+	"guides.cta.enterprise": "Brume Enterprise"
 }

@@ -1,0 +1,107 @@
+---
+title: Brume vs PostgreSQL Anonymizer
+description: 'Brume vs PostgreSQL Anonymizer: external CLI or in-database extension? Masking modes, foreign keys, subsetting, determinism, and when to pick each.'
+---
+
+import GuideCta from '../../../components/GuideCta.astro';
+
+[PostgreSQL Anonymizer](https://postgresql-anonymizer.readthedocs.io/en/stable/) (the `anon` extension, maintained by Dalibo) and Brume both protect personal data in PostgreSQL. They come from different designs, and each is the better choice in different situations — this page tries to say which, fairly.
+
+:::note[Sources]
+Statements about PostgreSQL Anonymizer come from [its official documentation](https://postgresql-anonymizer.readthedocs.io/en/stable/) (stable version, checked in October 2026). Statements about Brume come from [this site's docs](/docs/). If something is out of date, [tell us](https://github.com/brumeorg/Brume/issues).
+:::
+
+## At a glance
+
+| | PostgreSQL Anonymizer | Brume |
+|---|---|---|
+| **Form** | Extension installed in the database (`CREATE EXTENSION anon`) | External CLI; reads the source with a read-only account |
+| **Rules** | SQL `SECURITY LABEL` statements on columns and roles | Declarative `brume.yml` file |
+| **Modes** | Dynamic masking, static masking, anonymous dumps, masking views, replica masking, masking data wrappers | Copy-and-transform: source → another PostgreSQL database or a `.sql` file |
+| **Live masking for some users** | Yes — masked roles see masked data in the production database | No |
+| **Keys and foreign keys** | You choose consistent functions per column (hashing, deterministic pseudonymization, shuffling) | Rules on a key are applied automatically to every column linked to it by a foreign key; `FPE_ID` / `FPE_UUID` encrypt keys without collisions |
+| **Subsetting** | Sampling with `TABLESAMPLE`; subsetting with referential integrity is not supported | Filters + foreign-key radius (`fk_depth`), with parents kept so no FK dangles |
+| **Determinism** | Available through seeded pseudonymization and hashing functions with a salt; faking functions are random | Every strategy is keyed and deterministic, stable across releases of a major version |
+| **Finding PII columns** | Detection functions that suggest columns to mask | `brume scan` drafts rules from column names; `brume plan` lists PII-looking columns no rule covers |
+| **Function catalogue** | Broad: faking, pseudonymization, hashing, partial scrambling, noise, generalization, shuffling, conditional masking, image blurring, custom functions | Eight strategies: `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `DATE_SHIFT`, `KEEP` |
+| **Supported PostgreSQL** | 14 to 18 for the 3.x series | See [Getting started](/docs/getting-started/) |
+
+## Architecture: inside the database or outside
+
+**PostgreSQL Anonymizer is an extension.** It runs inside PostgreSQL, so it must be installed on the server: packages for RHEL, Debian/Ubuntu and SUSE, a Docker image, or a managed service that offers it — its docs list providers such as Aiven, Crunchy Bridge, Google Cloud SQL, Azure Database, Neon and others. Masking rules are declared in SQL and live with the schema:
+
+```sql
+SECURITY LABEL FOR anon ON COLUMN customer.phone
+  IS 'MASKED WITH FUNCTION anon.partial(phone,2,$$******$$,2)';
+```
+
+**Brume is a CLI that runs outside the database.** On the source it needs nothing but a read-only account and `pg_dump`. Rules live in a `brume.yml` file versioned with your code:
+
+```yaml
+- table: customer
+  columns:
+    - name: phone
+      strategy: MASK
+      type: PHONE
+```
+
+The consequence: if you can't install extensions on your production server — a managed service that doesn't offer `anon`, or a policy against extensions on production — Brume still works. If you want rules to live in the database itself, next to the schema, the extension does that natively.
+
+## Masking modes
+
+This is where PostgreSQL Anonymizer covers ground Brume doesn't.
+
+- **Dynamic masking**: roles labelled `MASKED` see masked values when they query the **production database**, while other roles see the real data. Useful for support teams, analysts or BI tools that need live access without seeing identities. **Brume has no equivalent** — it only produces copies.
+- **Static masking** rewrites the data in place, permanently; its documentation warns that these methods "will destroy the original data".
+- **Anonymous dumps** export masked data with `pg_dump` run by a masked role.
+- **Masking views**, **replica masking** and **masking data wrappers** extend the same rules to other access paths.
+
+Brume does one thing: it **copies** a source into a separate target, transforming on the fly. The source is never modified; the target is a new PostgreSQL database or a `.sql` file.
+
+## Primary keys and foreign keys
+
+Both tools can keep joins working, in different ways.
+
+With PostgreSQL Anonymizer, you choose a **consistent function per column**: its docs point to hashing ("allows to keep referential integrity intact"), to deterministic pseudonymization functions, and to shuffling (`anon.shuffle_column`), described as useful for foreign keys. You declare a rule on each column that needs it.
+
+With Brume, you declare a rule **once, on the key**. Brume detects the foreign keys and applies the same transformation to every column linked to it — `FPE_ID`, `FPE_UUID`, `HASH` and `FAKE` all follow foreign keys. `FPE_ID` and `FPE_UUID` are format-preserving encryption: integer in, integer out (UUID in, UUID out), bijective, so primary keys stay unique and FK constraints hold on the target without disabling triggers.
+
+## Subsetting
+
+PostgreSQL Anonymizer supports **sampling** with `TABLESAMPLE` rules. Its [sampling documentation](https://postgresql-anonymizer.readthedocs.io/en/stable/sampling/) is upfront: sampling may fail when foreign keys point to the sampled table, and extracting a subset while maintaining referential integrity is not supported — it suggests extracting a subset with another tool first, then anonymizing it.
+
+That's Brume's home ground. You select seed rows with SQL filters, and Brume copies every row within `fk_depth` foreign-key hops of them, in both directions, plus every parent those rows need. The result is a small database where every constraint holds — see [Subsetting without breaking foreign keys](/guides/subset-production-database-foreign-keys/).
+
+## Determinism
+
+PostgreSQL Anonymizer offers deterministic **pseudonymization functions** (`anon.seeded_*`): the same seed and salt always give the same fake value. Its **faking** functions, on the other hand, replace data with "random-but-plausible values".
+
+In Brume every strategy is deterministic and keyed by two secrets (`BRUME_HMAC_SECRET`, `BRUME_FPE_KEY`): the same input gives the same output across runs, machines, and all releases of the same major version. That's what keeps test fixtures stable and lets two databases pseudonymized separately still join.
+
+## When PostgreSQL Anonymizer is the better choice
+
+- You need **dynamic masking**: people or tools querying production that must not see identities.
+- You want masking rules **inside the database**, declared in SQL alongside the schema.
+- You need functions Brume doesn't offer: **noise, generalization, shuffling, image blurring**, conditional masking, your own SQL functions.
+- You need **masking views**, **replica masking** or masking on foreign data wrappers.
+- The extension is available on your server or managed provider, and you're comfortable running it there.
+
+## When Brume is the better choice
+
+- You need a **small, FK-coherent subset** of production, not a full copy.
+- You **can't or won't install an extension** on the production server.
+- You want **primary keys encrypted** and every foreign key rewritten to match, without declaring each column.
+- You want **every** value deterministic and stable from one refresh to the next, so tests and bug reports keep their ids.
+- You want a **pre-flight workflow**: `brume scan` drafts the rules, `brume plan` counts the rows and lists uncovered PII columns, `brume dry-run` exercises the pipeline, `brume audit --anonymity` measures k-anonymity.
+
+## Can you use both?
+
+Yes — they don't compete for the same job. A team can use PostgreSQL Anonymizer's dynamic masking for analysts querying production, and Brume to build pseudonymized test and staging databases.
+
+## Related guides
+
+- [How to anonymize a PostgreSQL database for testing](/guides/anonymize-postgresql-database-for-testing/)
+- [Brume vs pganonymize](/guides/brume-vs-pganonymize/)
+- [Pseudonymization vs anonymization: what the GDPR says](/guides/pseudonymization-vs-anonymization-gdpr/)
+
+<GuideCta />

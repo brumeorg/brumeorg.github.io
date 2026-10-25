@@ -1,5 +1,6 @@
 {
 	"header.docs": "Docs",
+	"header.guides": "Guides",
 	"header.roadmap": "Roadmap",
 	"header.support": "Support",
 	"header.enterprise": "Enterprise",
@@ -25,12 +26,16 @@
 	"enterprise.form.labelEmail": "Email:",
 	"enterprise.form.labelCompany": "Company:",
 	"enterprise.form.labelTeam": "Team:",
-	"enterprise.form.sentVia": "Sent via brumeorg.github.io/enterprise",
+	"enterprise.form.sentVia": "Sent via www.brume.software/enterprise",
 	"roadmap.packaging.blurb": "How Brume is built and shipped.",
 	"roadmap.engine.blurb": "What Brume does and what it supports.",
 	"roadmap.status.planned": "Planned",
 	"roadmap.status.exploration": "Exploration",
 	"install.label.debian": "debian/ubuntu",
 	"install.label.rhel": "rhel/fedora",
-	"install.label.macos": "macos"
+	"install.label.macos": "macos",
+	"guides.cta.title": "Try Brume on your own schema",
+	"guides.cta.lead": "Install the CLI, write a brume.yml and get a pseudonymized, FK-coherent copy of your PostgreSQL data. Need an SLA, SSO or custom PII types? Talk to us about Enterprise.",
+	"guides.cta.quickstart": "Quickstart",
+	"guides.cta.enterprise": "Brume Enterprise"
 }

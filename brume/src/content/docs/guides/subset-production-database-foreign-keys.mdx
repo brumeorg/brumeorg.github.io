@@ -1,0 +1,152 @@
+---
+title: Subsetting a production database without breaking foreign keys
+description: Why per-table sampling breaks referential integrity, and how to extract a small, FK-coherent PostgreSQL subset with a foreign-key radius.
+head:
+  - tag: title
+    content: Subset a PostgreSQL database without breaking FKs | Brume
+---
+
+import GuideCta from '../../../components/GuideCta.astro';
+
+A full copy of production is rarely what a developer needs. It's slow to restore, expensive to store, and it carries far more personal data than any test or debug session requires — the GDPR calls that out explicitly with the **data minimization** principle (Art. 5(1)(c)).
+
+So you want a subset. The hard part isn't picking rows: it's picking rows **that still fit together**.
+
+## Why naive subsets break
+
+The obvious approach is to cut each table on its own — a `WHERE` clause per table, or `TABLESAMPLE`:
+
+```sql
+-- 1% of users, 1% of orders, picked independently
+SELECT * FROM users  TABLESAMPLE BERNOULLI (1);
+SELECT * FROM orders TABLESAMPLE BERNOULLI (1);
+```
+
+The orders you kept mostly belong to users you didn't. Loading them into a database with the same constraints fails on the first foreign key, and the usual workaround — disabling triggers or dropping constraints — leaves you with a database your application can't trust.
+
+Foreign keys pull in **two directions**:
+
+- **Towards parents** — an `order` needs its `user` and the `product` of each item, or the constraint fails.
+- **Towards children** — an `order` without its `order_items` is valid for PostgreSQL but useless for a test of the checkout page.
+
+A good subset follows both, and stops somewhere.
+
+## A radius around seed rows
+
+Brume builds the subset from **seed rows** — the rows matched by the filters in `extraction.tables` — and copies every row within **`fk_depth` foreign-key hops** of them, counting hops towards parents and towards children alike.
+
+```yaml
+extraction:
+  fk_depth: 1
+  tables:
+    - table: orders
+      filter: "created_at >= '2025-01-01'"
+```
+
+With `orders` filtered on 2025:
+
+| `fk_depth` | Rows copied |
+|---|---|
+| `1` | the 2025 orders, their `users`, their `order_items` |
+| `2` | + the other orders of those users (even outside the filter), the `products` of the items |
+| `3` | + the items of those other orders, … |
+
+Then comes the edge of the radius. A copied row may reference a row that lies further away — an item pointing to a product, at depth `1`. The `orphan_policy` decides:
+
+| Value | Behavior |
+|---|---|
+| `KEEP_PARENTS` (default) | The parents of every copied row are copied too, whatever their distance — upwards only, Brume never descends again from them. **The target never holds a dangling foreign key.** |
+| `ALLOW_ORPHANS` | The radius is strict. References beyond it are kept as-is and reported (`[ORPHANS]` in the logs, `orphanReferences` in the JSON report). Joins lose those rows, and re-creating the constraints on the target fails. |
+
+With the default, the 2025 example above gives you the orders, their users, their items **and** the products those items need — a self-contained database where every constraint holds.
+
+## Subsetting and pseudonymizing in one pass
+
+Selecting rows is half the job: the subset still contains real names and emails. Brume transforms each column as it copies, in the same run. And because primary keys can be encrypted with `FPE_ID` or `FPE_UUID`, foreign keys need the **same** transformation, or the joins break again.
+
+Brume handles that: declare the rule on the key, and it applies to every column linked to it by a foreign key.
+
+```yaml
+anonymization:
+  tables:
+    - table: users
+      columns:
+        - name: id
+          strategy: FPE_ID    # orders.user_id gets the same encryption
+        - name: email
+          strategy: FAKE
+          type: EMAIL
+```
+
+The full walkthrough is in [How to anonymize a PostgreSQL database for testing](/guides/anonymize-postgresql-database-for-testing/).
+
+## Three subsets you'll actually need
+
+### Reproduce one production bug
+
+A bug report mentions `orders.id = 982331`. You want that order, its user, its items — and nothing else:
+
+```yaml
+extraction:
+  fk_depth: 1
+  tables:
+    - table: orders
+      filter: "id = 982331"
+```
+
+Because `FPE_ID` is deterministic, the order always lands on the same target id. Reference it in your notes; it'll still be there after the next refresh.
+
+### A time window for integration tests
+
+The 2025 example above. Start with `fk_depth: 1`; raise it only when a test needs rows that are missing — the other orders of the same users, for instance.
+
+### One tenant out of many
+
+```yaml
+extraction:
+  fk_depth: 1
+  tables:
+    - table: tenants
+      filter: "id = 42"
+    - table: users
+      filter: "tenant_id = 42"
+    - table: orders
+      filter: "tenant_id = 42"
+```
+
+:::caution[The radius crosses tenants]
+`fk_depth` goes both ways. From a row shared by several tenants — a plan, a country, a product — one more hop down reaches **other tenants' rows**. Apply the tenant filter on every root table, keep `fk_depth` low, and check the per-table counts before you run.
+:::
+
+## Check before you copy
+
+```bash
+brume plan
+```
+
+`plan` counts the rows each table will receive within the radius — **exactly** what `brume execute` will copy — without writing anything. If `users` suddenly shows millions of rows at `fk_depth: 2`, you know before your laptop does.
+
+Once the copy is done, a quick query confirms that no foreign key dangles:
+
+```sql
+-- Expected: 0
+SELECT count(*)
+FROM order_items i
+LEFT JOIN products p ON p.id = i.product_id
+WHERE p.id IS NULL;
+```
+
+## Good to know
+
+- **Each hop can multiply the row count.** On a real schema, `fk_depth: 3` can mean most of the database. Start at `1`.
+- **Partitioned tables count as one table.** Declare filters on the partitioned table, never on its partitions.
+- **Views, materialized views and foreign tables** aren't tables: they can't be filtered, but their definitions are recreated on the target by the schema copy.
+- **`brume execute` rebuilds the target** from scratch on each run. An incremental [merge mode](/roadmap/merge-mode/) is on the roadmap.
+
+## Related guides
+
+- [How to anonymize a PostgreSQL database for testing](/guides/anonymize-postgresql-database-for-testing/)
+- [Copy production data to staging safely (GDPR)](/guides/copy-production-to-staging-gdpr/)
+- [`brume.yml` reference — `extraction`](/docs/configuration/#extraction)
+
+<GuideCta />

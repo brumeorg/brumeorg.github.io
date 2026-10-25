@@ -1,0 +1,56 @@
+---
+const t = Astro.locals.t;
+const { pathname } = Astro.url;
+const isFrench = pathname.startsWith('/fr/') || pathname === '/fr';
+const p = isFrench ? '/fr' : '';
+---
+
+<aside class="guide-cta not-content">
+	<p class="guide-cta-title">{t('guides.cta.title')}</p>
+	<p class="guide-cta-lead">{t('guides.cta.lead')}</p>
+	<div class="guide-cta-actions">
+		<a class="brume-btn brume-btn-primary" href={`${p}/docs/getting-started/`}>
+			{t('guides.cta.quickstart')}
+			<svg class="brume-btn-arrow" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+				<path
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.6"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M3 8h10M9 4l4 4-4 4"
+				></path>
+			</svg>
+		</a>
+		<a class="brume-btn brume-btn-secondary" href={`${p}/enterprise/`}>
+			{t('guides.cta.enterprise')}
+		</a>
+	</div>
+</aside>
+
+<style>
+	.guide-cta {
+		margin-top: 3rem;
+		padding: 1.75rem 1.5rem;
+		border: 1px solid var(--brume-hairline);
+		border-radius: 1rem;
+		background: var(--brume-sage-tint-soft);
+	}
+	.guide-cta-title {
+		margin: 0;
+		font-family: 'Asap Condensed', sans-serif;
+		font-size: var(--sl-text-2xl);
+		font-weight: 500;
+		color: var(--sl-color-white);
+	}
+	.guide-cta-lead {
+		margin: 0.5rem 0 1.25rem;
+		color: var(--sl-color-gray-2);
+		max-width: 60ch;
+	}
+	.guide-cta-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+</style>

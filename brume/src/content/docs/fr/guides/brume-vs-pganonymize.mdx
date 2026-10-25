@@ -1,0 +1,85 @@
+---
+title: Brume vs pganonymize pour anonymiser PostgreSQL
+description: 'Brume vs pganonymize : réécriture sur place ou copie avec transformation ? Déterminisme, clés étrangères, sous-ensembles, et quand choisir lequel.'
+---
+
+import GuideCta from '../../../../components/GuideCta.astro';
+
+[pganonymize](https://github.com/rheinwerk-verlag/pganonymize) et Brume sont deux outils en ligne de commande pilotés par un fichier YAML, tous deux destinés à sortir les données personnelles des bases PostgreSQL. Sous la surface, ils fonctionnent très différemment, et chacun convient à des situations différentes — cette page essaie de dire lesquelles, honnêtement.
+
+:::note[Sources]
+Les affirmations sur pganonymize proviennent de son [README](https://github.com/rheinwerk-verlag/pganonymize), de sa [documentation](https://pganonymize.readthedocs.io/en/latest/schema.html) et de son code source (version 0.13.0, vérifiée en octobre 2026). Celles sur Brume proviennent de [la documentation de ce site](/fr/docs/). Si quelque chose n'est plus à jour, [dites-le-nous](https://github.com/brumeorg/Brume/issues).
+:::
+
+## En un coup d'œil
+
+| | pganonymize | Brume |
+|---|---|---|
+| **Forme** | Paquet Python (`pip install pganonymize`), compatible Python 2.7 | CLI native via apt, dnf ou Homebrew |
+| **Fonctionnement** | Se connecte à une base et **réécrit ses tables sur place** | **Copie** une source vers une cible distincte en transformant à la volée ; la source n'est jamais modifiée |
+| **Sortie** | La base anonymisée elle-même, éventuellement exportée avec `--dump-file` | Une autre base PostgreSQL, ou un fichier `.sql` |
+| **Règles** | Schéma YAML : tables, champs, un provider par champ | `brume.yml` : tables, colonnes, stratégie + type sémantique |
+| **Transformations** | `fake.*` (n'importe quel provider Faker), `choice`, `clear`, `mask`, `partial_mask`, `md5`, `set`, `uuid4`, `update_json` | `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `DATE_SHIFT`, `KEEP` |
+| **Déterminisme** | `md5` et `set` sont déterministes ; `fake.*`, `choice` et `uuid4` produisent des valeurs aléatoires | Chaque stratégie est déterministe et à clé, stable sur toutes les versions d'une version majeure |
+| **Clés et clés étrangères** | Non décrit dans la documentation | Une règle sur une clé s'applique à chaque colonne liée par une clé étrangère ; clés primaires chiffrées sans collision |
+| **Sous-ensembles** | Non — `search` et `excludes` choisissent les lignes à anonymiser ; `truncate` vide des tables entières | Filtres + rayon de clés étrangères (`fk_depth`), parents conservés pour qu'aucune FK ne pointe dans le vide |
+| **Vérifications préalables** | `--dry-run` (les changements ne sont pas validés) | `scan`, `plan`, `dry-run`, `audit --anonymity` |
+| **Licence** | MIT | Apache 2.0 |
+
+## Sur place ou copie avec transformation
+
+**pganonymize réécrit la base à laquelle il se connecte.** Pour chaque table, il lit les lignes, calcule de nouvelles valeurs et les réécrit avec `UPDATE`. C'est pourquoi on l'exécute sur une **copie** — typiquement une sauvegarde restaurée dans un environnement hors production — jamais sur la production elle-même. Le flux habituel :
+
+```
+sauvegarde prod ──▶ restauration dans une base jetable ──▶ pganonymize (sur place) ──▶ --dump-file
+```
+
+**Brume lit la source et écrit ailleurs.** Il se connecte à la production avec un compte en lecture seule, transforme chaque ligne au fil du flux, et écrit dans une base cible ou un fichier `.sql` :
+
+```
+prod (lecture seule) ──▶ brume (transformation à la volée) ──▶ base de test ou .sql
+```
+
+La différence pratique : avec pganonymize, une **copie non masquée** des données existe quelque part jusqu'à la fin de l'anonymisation — il faut la sécuriser et la nettoyer. Avec Brume, les vraies valeurs ne sortent jamais de la source. En revanche, pganonymize n'a pas besoin d'une seconde base : si vous avez déjà une copie restaurée et voulez simplement la nettoyer, il le fait directement.
+
+## Déterminisme et données de test stables
+
+Les providers `fake.*` de pganonymize utilisent la bibliothèque Faker, qui génère des données aléatoires pour chaque ligne : lancez-le deux fois, vous obtenez des noms différents. `choice` et `uuid4` sont aléatoires eux aussi. `md5` est déterministe — c'est un MD5 simple de la valeur d'origine, sans clé secrète, donc quiconque dispose d'une valeur candidate peut le recalculer.
+
+Les stratégies de Brume sont toutes déterministes et **à clé**, fondées sur deux secrets. `HASH` est un HMAC-SHA256, les valeurs `FAKE` sont initialisées par un HMAC de l'original, `FPE_ID` / `FPE_UUID` utilisent un chiffrement préservant le format. Même entrée + mêmes secrets = même sortie, à chaque exécution. Les fixtures restent stables et les bugs reproductibles (« l'utilisateur `12227206` échoue toujours après le rafraîchissement ») — et sans les secrets, la sortie ne peut pas être recalculée à partir d'une supposition.
+
+## Clés primaires et clés étrangères
+
+La documentation de pganonymize ne décrit pas le traitement des clés : il identifie les lignes par leur `primary_key` (par défaut `id`) pour les réécrire, et conseille de lister ensemble sous `truncate` les tables liées pour pouvoir les vider sans erreur de contrainte.
+
+Brume traite les clés comme un sujet à part entière. `FPE_ID` chiffre des identifiants entiers en entiers, `FPE_UUID` des UUID en UUID, sans collision — et Brume applique la même transformation à chaque clé étrangère qui les référence. Les contraintes tiennent sur la cible sans désactiver les triggers.
+
+## Sous-ensembles
+
+pganonymize travaille sur toute la base qu'on lui désigne. Son option `search` prend une condition SQL qui sélectionne **les lignes à anonymiser** — les lignes qui ne correspondent pas restent telles quelles — et `excludes` ignore les lignes qui correspondent à un motif. `truncate` vide des tables entières dont vous n'avez pas besoin.
+
+Brume sélectionne **les lignes à copier** : des lignes de départ issues de filtres SQL, puis chaque ligne à au plus `fk_depth` sauts de clé étrangère, plus les parents dont elles ont besoin. Le résultat est une petite base autonome — voir [Extraire un sous-ensemble sans casser les clés étrangères](/fr/guides/subset-production-database-foreign-keys/).
+
+## Quand pganonymize est le meilleur choix
+
+- Vous avez déjà une **copie restaurée** et voulez la nettoyer sur place, sans seconde base.
+- Votre équipe vit en **Python** et veut un `pip install` — y compris sur des plateformes Python 2.7 historiques.
+- Vous voulez l'étendue des **providers Faker** (`fake.*`) pour des champs que les types sémantiques de Brume ne couvrent pas.
+- Vous avez besoin de la sémantique de `choice`, `set` ou `update_json` (remplacer des valeurs JSON par type de donnée), ou de **vider** des tables entières.
+- Des valeurs aléatoires et non reproductibles conviennent — voire sont préférables — pour votre usage.
+
+## Quand Brume est le meilleur choix
+
+- Vous ne voulez pas qu'une **copie non masquée** de la production existe hors de la production, même temporairement.
+- Vous avez besoin d'une sortie **déterministe et à clé** : fixtures stables, identifiants qui survivent aux rafraîchissements, jointures entre bases pseudonymisées séparément.
+- Vos **clés primaires** doivent aussi être pseudonymisées, avec chaque clé étrangère qui suit.
+- Vous avez besoin d'un **sous-ensemble**, pas d'une copie complète nettoyée.
+- Vous voulez des **garde-fous** avant d'écrire : `plan` liste les colonnes d'apparence personnelle sans règle et refuse les configurations vouées à l'échec ; `audit --anonymity` mesure le risque résiduel de ré-identification.
+
+## Guides liés
+
+- [Comment anonymiser une base PostgreSQL pour les tests](/fr/guides/anonymize-postgresql-database-for-testing/)
+- [Brume vs PostgreSQL Anonymizer](/fr/guides/brume-vs-postgresql-anonymizer/)
+- [Copier la prod en staging en conformité RGPD](/fr/guides/copy-production-to-staging-gdpr/)
+
+<GuideCta />

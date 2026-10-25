@@ -41,4 +41,4 @@ Production-grade usage, compliance, and troubleshooting.
 
 ---
 
-**Looking for the roadmap?** See [Roadmap](/roadmap/). **Need help?** See [Support](/support/).
+**Prefer step-by-step guides?** See [Guides](/guides/). **Looking for the roadmap?** See [Roadmap](/roadmap/). **Need help?** See [Support](/support/).
