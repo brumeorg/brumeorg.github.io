@@ -30,7 +30,7 @@ brume init jdbc    # sink = cible PostgreSQL via JDBC
 | `dump` | `BRUME_SINK_TYPE=DUMP` / `BRUME_SINK_OUTPUT_PATH` / `BRUME_SINK_COMPRESSION` — écrit un dump `.sql` |
 | `jdbc` | `BRUME_TARGET_HOST` / `BRUME_TARGET_DB` / … — écrit vers une cible Postgres live |
 
-Les deux templates incluent aussi les blocs secrets et source. Éditez le `.env.brume` généré, puis exécutez `brume diag` pour valider la configuration. Ce fichier remplace la convention `.env` historique — toutes les autres sous-commandes lisent exclusivement `.env.brume`.
+Les deux templates incluent aussi les blocs secrets et source. Éditez le `.env.brume` généré, puis exécutez `brume diag` pour le valider — `diag` vérifie la configuration sans se connecter à aucune base ; `brume plan` vérifie ensuite la connexion à la source. Ce fichier remplace la convention `.env` historique — toutes les autres sous-commandes lisent exclusivement `.env.brume`.
 
 :::caution
 `brume init` refuse d'écraser un `.env.brume` existant. Supprimez ou renommez le fichier existant si vous voulez vraiment le régénérer.
@@ -101,29 +101,50 @@ Se termine avec un résumé par table et le temps total d'exécution. Les lignes
 
 ## `brume audit --anonymity`
 
-Mesure le **risque résiduel de ré-identification** sur un dataset pseudonymisé via le **k-anonymat** (Sweeney 2002). Voir la page dédiée pour les détails : [Audit k-anonymat](/fr/docs/k-anonymity/).
+Mesure le **risque résiduel de ré-identification** sur un dataset pseudonymisé via le **k-anonymat** (Sweeney 2002). Il lit la base **cible** définie par les variables `BRUME_TARGET_*` — uniquement des requêtes `SELECT` — et ne touche jamais la source. Voir la page dédiée pour les détails : [Audit k-anonymat](/fr/docs/k-anonymity/).
 
 ```bash
 brume audit --anonymity \
   --quasi-id "users:birth_date,zip_code,gender" \
-  --report-format markdown
+  --output-markdown audit.md
 ```
 
 | Flag | Requis | Description |
 |---|---|---|
-| `--quasi-id "table:col1,col2,…"` | oui | Déclare les colonnes quasi-identifiantes à tester. Répéter pour plusieurs tables. |
-| `--report-format markdown\|json` | non | Format de sortie. Défaut : `markdown`. |
-| `--report-out CHEMIN` | non | Écrit le rapport dans un fichier plutôt que sur stdout. |
+| `--anonymity` | oui | Lance l'audit de k-anonymat — le seul type d'audit pour l'instant. |
+| `--quasi-id "table:col1,col2,…"` | l'un des deux | Déclare les colonnes quasi-identifiantes à tester. Répéter pour plusieurs tables. Prioritaire sur `--auto-detect-quasi-id`. |
+| `--auto-detect-quasi-id` | l'un des deux | Détecte les colonnes quasi-identifiantes d'après leur nom. Ignoré si `--quasi-id` est fourni. |
+| `--strict` | non | Sort avec le code `8` si une table auditée a un `k_min` inférieur à `--k-min`. |
+| `--k-min N` | non | Seuil utilisé par `--strict`. Défaut : `5`. |
+| `--sample-rate R` | non | Fraction dans `(0, 1]` de chaque table à parcourir, via `TABLESAMPLE SYSTEM`. Défaut : `1.0` (parcours complet). |
+| `--output-json CHEMIN` | non | Écrit aussi le rapport JSON dans un fichier. |
+| `--output-markdown CHEMIN` | non | Écrit aussi le rapport Markdown — celui à remettre à votre DPO — dans un fichier. |
+
+Le rapport est toujours affiché dans la console (en JSON avec `--json`).
 
 ## `brume diag`
 
-Auto-diagnostic. Vérifie que l'environnement est sain : `pg_dump` est sur le `PATH`, les secrets sont chargés, source et cible sont joignables.
+Vérification au démarrage. Charge `.env.brume`, valide la configuration (longueur des secrets, clé FPE, réglages du sink) et l'affiche avec la version de Brume. Il **ne se connecte jamais** à la source ni à la cible et ne cherche pas `pg_dump` : il tourne partout — comme première commande sur une nouvelle machine, ou comme `HEALTHCHECK` Docker.
 
 ```bash
 brume diag
 ```
 
-Utile comme première commande après installation de Brume sur une nouvelle machine, et comme garde-fou CI avant d'exécuter `execute`.
+Les connexions et `pg_dump` sont vérifiés par les autres commandes — voir [Contrôles préalables](#contrôles-préalables).
+
+## Contrôles préalables
+
+Avant de lire la moindre ligne, `plan`, `dry-run` et `execute` lancent des vérifications rapides et s'arrêtent au premier échec, avec un code d'erreur explicite :
+
+| Vérification | `plan` · `dry-run` | `execute` |
+|---|---|---|
+| Source joignable (`CONNECTION_SOURCE_UNREACHABLE`) | ✓ | ✓ |
+| `BRUME_SCHEMA` existe sur la source, et le rôle a `USAGE` dessus | ✓ | ✓ |
+| `pg_dump` sur le `PATH` (`PREFLIGHT_PG_DUMP_NOT_FOUND`) | — | ✓ |
+| Version majeure de `pg_dump` ≥ version majeure de la source (`PREFLIGHT_PG_DUMP_VERSION_MISMATCH`) | — | ✓ |
+| Cible joignable (`CONNECTION_TARGET_UNREACHABLE`), le rôle peut `CREATE` et possède le schéma cible s'il existe | — | ✓ (cible base de données uniquement) |
+
+`brume audit` vérifie seulement que la cible est joignable.
 
 ## Codes de sortie
 

@@ -31,30 +31,36 @@ A **singleton class** is a combination of quasi-identifier values that appears i
 
 ## Running the audit
 
+Run it after `brume execute`: the audit reads the **target** database — the pseudonymized copy, set by the `BRUME_TARGET_*` variables — with `SELECT` queries only.
+
 ```bash
 brume audit --anonymity \
-  --quasi-id "users:birth_date,zip_code,gender" \
-  --report-format markdown
+  --quasi-id "users:birth_date,zip_code,gender"
 ```
 
-Multiple tables can be audited in one run by repeating `--quasi-id`:
+Multiple tables can be audited in one run by repeating `--quasi-id`. `--output-markdown` also writes the report to a file:
 
 ```bash
 brume audit --anonymity \
   --quasi-id "users:birth_date,zip_code,gender" \
   --quasi-id "patients:age_bucket,city,blood_type" \
-  --report-out audit-2026-q2.md
+  --output-markdown audit-2026-q2.md
 ```
+
+Without `--quasi-id`, `--auto-detect-quasi-id` picks quasi-identifier columns from their names. On large tables, `--sample-rate 0.1` scans 10 % of each table (`TABLESAMPLE SYSTEM`), trading accuracy for speed. All flags are in the [CLI reference](/docs/cli/#brume-audit---anonymity).
 
 ## Reading the report
 
-The report has three sections:
+The report contains:
 
-1. **Summary** — `k_min`, number of singletons, percentage of rows in equivalence classes below threshold.
-2. **Top exposed combinations** — the smallest classes, sorted by `k` ascending.
-3. **Recommendations** — concrete suggestions: generalize this column (`birth_date` → `birth_year`), suppress that one, or change its strategy in `brume.yml`.
+1. **A header** — target schema, audit date, policy (`--strict` threshold or informational), overall `k_min` and verdict.
+2. **A summary per table** — quasi-identifier columns, `k_min`, average `k`, rows, equivalence classes, singletons.
+3. **The distribution of class sizes** — how many classes have `k = 1`, `2–4`, `5–9`, `10–99`, `≥ 100`.
+4. **The singleton classes** — the uniquely identifiable combinations, capped per table.
+5. **Recommendations** — what to change to raise `k`.
+6. **Methodology & limits.**
 
-The report is designed to be handed to your DPO **as-is** for decision support.
+The Markdown report (`--output-markdown`) is designed to be handed to your DPO **as-is** for decision support. It is currently written in French.
 
 ## What the audit is *not*
 
@@ -68,13 +74,13 @@ These are roadmap items. For now, k-anonymity gives you the single most useful n
 
 ## In CI/CD
 
-The audit exits with **code `3`** if a threshold is breached, so you can gate runs:
+With `--strict`, the audit exits with **code `8`** when a table's `k_min` is below `--k-min` (default `5`), so you can gate runs:
 
 ```bash
 brume audit --anonymity \
   --quasi-id "users:birth_date,zip_code,gender" \
-  --min-k 5 \
-  --report-out artifacts/k-anonymity.md
+  --strict --k-min 5 \
+  --output-markdown artifacts/k-anonymity.md
 ```
 
 Use this to keep staging refreshes within an acceptable risk envelope.

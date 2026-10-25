@@ -9,13 +9,13 @@ Cette page rassemble tout ce dont vous avez besoin pour faire tourner Brume dans
 
 ### Parallélisme
 
-`BRUME_PARALLELISM` (défaut `4`) contrôle le nombre de threads workers appliqués à l'étape de transformation. Augmentez-le sur des machines avec des cœurs disponibles et de bonnes I/O.
+`BRUME_PARALLELISM` (défaut `20`) fixe la taille maximale des pools de connexions que Brume ouvre vers la source et vers la cible — et plafonne donc le nombre de requêtes simultanées de chaque côté.
 
 ```bash
-BRUME_PARALLELISM=12 brume execute
+BRUME_PARALLELISM=8 brume execute
 ```
 
-Les retours décroissants apparaissent au-delà de `2 × cœurs physiques`. Surveillez votre base source — Brume ouvre une connexion en lecture par worker.
+Baissez-le pour ménager une base de production chargée : chaque connexion est un processus serveur sur la source. Ne l'augmentez que si les deux bases ont de la marge.
 
 ### `fk_depth`
 
@@ -66,13 +66,11 @@ Voir la [référence `.env.brume`](/fr/docs/env/#créer-un-compte-en-lecture-seu
 
 ## Compatibilité PostgreSQL
 
-Brume supporte **PostgreSQL 14, 15, 16, 17 et 18** à la fois sur source et cible.
+Brume supporte **PostgreSQL 12, 13, 14, 15, 16, 17 et 18** à la fois sur source et cible.
 
-Le binaire `pg_dump` utilisé par Brume (pour la réplication du schéma) doit être sur le `PATH` et **sa version majeure doit correspondre à celle de la source**. Si votre source est Postgres 17, installez `postgresql-client-17`.
+Le binaire `pg_dump` utilisé par Brume (pour la réplication du schéma) doit être sur le `PATH` et **sa version majeure doit être supérieure ou égale à celle de la source**. Si votre source est Postgres 17, installez `postgresql-client-17` ou plus récent.
 
-```bash
-brume diag  # vérifie la version pg_dump vs source
-```
+`brume execute` vérifie les deux avant de copier quoi que ce soit, et s'arrête avec `PREFLIGHT_PG_DUMP_NOT_FOUND` ou `PREFLIGHT_PG_DUMP_VERSION_MISMATCH` — voir [Contrôles préalables](/fr/docs/cli/#contrôles-préalables).
 
 ## Logging
 
@@ -104,15 +102,11 @@ Chaque ligne est un objet JSON avec `timestamp`, `level`, `event`, `table` et de
 FATAL: connection refused (host=db.prod.internal port=5432)
 ```
 
-La source ou la cible n'est pas joignable. Exécutez `brume diag` pour isoler laquelle. Vérifiez VPN, security groups, `sslmode`.
+La source ou la cible n'est pas joignable. Le code d'erreur indique laquelle : `CONNECTION_SOURCE_UNREACHABLE` ou `CONNECTION_TARGET_UNREACHABLE` (`brume plan` ne vérifie que la source). Vérifiez VPN, security groups, `sslmode`.
 
-### `pg_dump version mismatch`
+### `PREFLIGHT_PG_DUMP_VERSION_MISMATCH`
 
-```
-pg_dump: error: server version: 17.2; pg_dump version: 14.10
-```
-
-Installez le paquet `postgresql-client-NN` correspondant.
+Le `pg_dump` du `PATH` est plus ancien que le serveur source. `brume execute` le vérifie avant de copier quoi que ce soit. Installez un paquet `postgresql-client-NN` dont la version majeure est au moins celle de la source.
 
 ### `Strategy requires a type`
 
@@ -144,7 +138,7 @@ Le chemin est faux ou n'existe dans aucune ligne de la colonne. Inspectez quelqu
 warning: BRUME_HMAC_SECRET matches the value shipped by `brume init` — replace it before running `execute`
 ```
 
-Introduit avec Brume 1.6. Le run n'est pas bloqué, mais toute pseudonymisation produite avec le placeholder est réversible par quiconque a accès aux sources de Brume. Générez une valeur à haute entropie (par ex. `openssl rand -base64 48` pour `BRUME_HMAC_SECRET`, `openssl rand -hex 24` pour `BRUME_FPE_KEY`) et faites tourner le `.env.brume`.
+Introduit avec Brume 1.6. Le run n'est pas bloqué, mais toute pseudonymisation produite avec le placeholder est réversible par quiconque a accès aux sources de Brume. Générez une valeur à haute entropie (par ex. `openssl rand -base64 48` pour `BRUME_HMAC_SECRET`, `openssl rand -hex 16` pour `BRUME_FPE_KEY` — 32 caractères) et faites tourner le `.env.brume`.
 
 ### `Uncovered PII columns` (depuis `brume plan`)
 

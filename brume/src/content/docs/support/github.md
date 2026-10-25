@@ -15,7 +15,7 @@ The repository hosts the source code, the release artifacts, the issue tracker, 
 
 Use **issues** for:
 
-- Bug reports — please include your Brume version (`brume --help`), Postgres version, and the minimal `brume.yml` that reproduces.
+- Bug reports — please include your Brume version (`brume --version`), Postgres version, and the minimal `brume.yml` that reproduces.
 - Feature requests — check the [roadmap](/roadmap/) first to see if it's already planned.
 - Documentation feedback — typos, unclear sections, missing pages.
 

@@ -30,7 +30,7 @@ brume init jdbc    # sink = PostgreSQL target over JDBC
 | `dump` | `BRUME_SINK_TYPE=DUMP` / `BRUME_SINK_OUTPUT_PATH` / `BRUME_SINK_COMPRESSION` — writes a `.sql` dump |
 | `jdbc` | `BRUME_TARGET_HOST` / `BRUME_TARGET_DB` / … — writes to a live Postgres target |
 
-Both templates also include the secret and source blocks. Edit the generated `.env.brume`, then run `brume diag` to verify the setup. The file replaces the legacy `.env` convention — every other subcommand reads `.env.brume` exclusively.
+Both templates also include the secret and source blocks. Edit the generated `.env.brume`, then run `brume diag` to validate it — `diag` checks the configuration without connecting to any database; `brume plan` then checks the source connection. The file replaces the legacy `.env` convention — every other subcommand reads `.env.brume` exclusively.
 
 :::caution
 `brume init` refuses to overwrite an existing `.env.brume`. Delete or rename the existing file first if you really want to regenerate it.
@@ -101,29 +101,50 @@ Exits with a per-table summary and total wall-time. Rows lost to a `UNIQUE` coll
 
 ## `brume audit --anonymity`
 
-Measures **residual re-identification risk** on a pseudonymized dataset using **k-anonymity** (Sweeney 2002). See the dedicated page for details: [k-Anonymity audit](/docs/k-anonymity/).
+Measures **residual re-identification risk** on a pseudonymized dataset using **k-anonymity** (Sweeney 2002). It reads the **target** database set by the `BRUME_TARGET_*` variables — `SELECT` queries only — and never touches the source. See the dedicated page for details: [k-Anonymity audit](/docs/k-anonymity/).
 
 ```bash
 brume audit --anonymity \
   --quasi-id "users:birth_date,zip_code,gender" \
-  --report-format markdown
+  --output-markdown audit.md
 ```
 
 | Flag | Required | Description |
 |---|---|---|
-| `--quasi-id "table:col1,col2,…"` | yes | Declares the quasi-identifier columns to test. Repeat for multiple tables. |
-| `--report-format markdown\|json` | no | Output format. Default: `markdown`. |
-| `--report-out PATH` | no | Write the report to a file instead of stdout. |
+| `--anonymity` | yes | Runs the k-anonymity audit — the only audit kind for now. |
+| `--quasi-id "table:col1,col2,…"` | one of the two | Declares the quasi-identifier columns to test. Repeat for multiple tables. Takes precedence over `--auto-detect-quasi-id`. |
+| `--auto-detect-quasi-id` | one of the two | Detects quasi-identifier columns from their names. Ignored when `--quasi-id` is set. |
+| `--strict` | no | Exits with code `8` if an audited table has `k_min` below `--k-min`. |
+| `--k-min N` | no | Threshold used by `--strict`. Default: `5`. |
+| `--sample-rate R` | no | Fraction in `(0, 1]` of each table to scan, via `TABLESAMPLE SYSTEM`. Default: `1.0` (full scan). |
+| `--output-json PATH` | no | Also writes the JSON report to a file. |
+| `--output-markdown PATH` | no | Also writes the Markdown report — the one to hand to your DPO — to a file. |
+
+The report is always printed on the console (as JSON with `--json`).
 
 ## `brume diag`
 
-Self-diagnostic. Verifies that the environment is sane: `pg_dump` is on `PATH`, secrets are loaded, source and target are reachable.
+Boot check. Loads `.env.brume`, validates the configuration (secret lengths, FPE key, sink settings) and prints it with the Brume version. It **never connects** to the source or the target and doesn't look for `pg_dump`, so it runs anywhere — as a first command on a new machine, or as a Docker `HEALTHCHECK`.
 
 ```bash
 brume diag
 ```
 
-Useful as the first command after installing Brume on a new machine, and as a CI gate before running `execute`.
+Connections and `pg_dump` are checked by the other commands — see [Preflight checks](#preflight-checks).
+
+## Preflight checks
+
+Before reading any row, `plan`, `dry-run` and `execute` run quick checks and stop at the first failure, with an explicit error code:
+
+| Check | `plan` · `dry-run` | `execute` |
+|---|---|---|
+| Source reachable (`CONNECTION_SOURCE_UNREACHABLE`) | ✓ | ✓ |
+| `BRUME_SCHEMA` exists on the source, and the role has `USAGE` on it | ✓ | ✓ |
+| `pg_dump` on `PATH` (`PREFLIGHT_PG_DUMP_NOT_FOUND`) | — | ✓ |
+| `pg_dump` major version ≥ source major version (`PREFLIGHT_PG_DUMP_VERSION_MISMATCH`) | — | ✓ |
+| Target reachable (`CONNECTION_TARGET_UNREACHABLE`), the role can `CREATE`, and owns the target schema if it exists | — | ✓ (database target only) |
+
+`brume audit` only checks that the target is reachable.
 
 ## Exit codes
 

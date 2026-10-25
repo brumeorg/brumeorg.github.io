@@ -15,7 +15,7 @@ Le dépôt héberge le code source, les artefacts de release, le tracker d'issue
 
 Utilisez les **issues** pour :
 
-- Les rapports de bug — merci d'inclure votre version de Brume (`brume --help`), la version de Postgres et le `brume.yml` minimal qui reproduit.
+- Les rapports de bug — merci d'inclure votre version de Brume (`brume --version`), la version de Postgres et le `brume.yml` minimal qui reproduit.
 - Les demandes de fonctionnalité — vérifiez la [Roadmap](/fr/roadmap/) d'abord pour voir si c'est déjà prévu.
 - Les retours sur la documentation — fautes de frappe, sections obscures, pages manquantes.
 

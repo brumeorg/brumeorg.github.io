@@ -31,30 +31,36 @@ Une **classe singleton** est une combinaison de valeurs quasi-identifiantes qui 
 
 ## Exécuter l'audit
 
+Lancez-le après `brume execute` : l'audit lit la base **cible** — la copie pseudonymisée, définie par les variables `BRUME_TARGET_*` — uniquement avec des requêtes `SELECT`.
+
 ```bash
 brume audit --anonymity \
-  --quasi-id "users:birth_date,zip_code,gender" \
-  --report-format markdown
+  --quasi-id "users:birth_date,zip_code,gender"
 ```
 
-Plusieurs tables peuvent être auditées en une seule exécution en répétant `--quasi-id` :
+Plusieurs tables peuvent être auditées en une seule exécution en répétant `--quasi-id`. `--output-markdown` écrit aussi le rapport dans un fichier :
 
 ```bash
 brume audit --anonymity \
   --quasi-id "users:birth_date,zip_code,gender" \
   --quasi-id "patients:age_bucket,city,blood_type" \
-  --report-out audit-2026-t2.md
+  --output-markdown audit-2026-t2.md
 ```
+
+Sans `--quasi-id`, `--auto-detect-quasi-id` choisit les colonnes quasi-identifiantes d'après leur nom. Sur de grosses tables, `--sample-rate 0.1` ne parcourt que 10 % de chaque table (`TABLESAMPLE SYSTEM`), au prix de la précision. Tous les flags sont dans la [référence CLI](/fr/docs/cli/#brume-audit---anonymity).
 
 ## Lire le rapport
 
-Le rapport a trois sections :
+Le rapport contient :
 
-1. **Résumé** — `k_min`, nombre de singletons, pourcentage de lignes dans des classes d'équivalence sous le seuil.
-2. **Top des combinaisons exposées** — les classes les plus petites, triées par `k` croissant.
-3. **Recommandations** — suggestions concrètes : généraliser cette colonne (`date_naissance` → `année_naissance`), supprimer celle-là, ou changer sa stratégie dans `brume.yml`.
+1. **Un en-tête** — schéma cible, date de l'audit, politique (seuil `--strict` ou informatif), `k_min` global et verdict.
+2. **Une synthèse par table** — colonnes quasi-identifiantes, `k_min`, `k` moyen, lignes, classes d'équivalence, singletons.
+3. **La distribution des tailles de classes** — combien de classes ont `k = 1`, `2–4`, `5–9`, `10–99`, `≥ 100`.
+4. **Les classes singletons** — les combinaisons identifiables de manière unique, plafonnées par table.
+5. **Des recommandations** — ce qu'il faut changer pour augmenter `k`.
+6. **Méthodologie & limites.**
 
-Le rapport est conçu pour être remis à votre DPO **tel quel** en aide à la décision.
+Le rapport Markdown (`--output-markdown`) est conçu pour être remis à votre DPO **tel quel** en aide à la décision.
 
 ## Ce que l'audit n'est *pas*
 
@@ -68,13 +74,13 @@ Ce sont des points de la Roadmap. Pour l'instant, le k-anonymat vous donne le ch
 
 ## En CI/CD
 
-L'audit se termine avec le **code `3`** si un seuil est dépassé, vous pouvez donc en faire un garde-fou :
+Avec `--strict`, l'audit se termine avec le **code `8`** quand le `k_min` d'une table est inférieur à `--k-min` (défaut `5`) : vous pouvez donc en faire un garde-fou :
 
 ```bash
 brume audit --anonymity \
   --quasi-id "users:birth_date,zip_code,gender" \
-  --min-k 5 \
-  --report-out artifacts/k-anonymity.md
+  --strict --k-min 5 \
+  --output-markdown artifacts/k-anonymity.md
 ```
 
 Utilisez ça pour maintenir les rafraîchissements de staging dans une enveloppe de risque acceptable.

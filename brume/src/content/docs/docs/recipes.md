@@ -44,7 +44,7 @@ Because `FPE_ID` is deterministic, your bug at source `id = 982331` will land at
 
 **Problem.** You want `staging` to be re-pseudonymized every Sunday night from `prod`.
 
-**Prerequisites.** Commit your `brume.yml` at the repo root (or pass a path with `--config`). The job below assumes it's checked out alongside the workflow.
+**Prerequisites.** Commit your `brume.yml` at the repo root (or point `BRUME_CONFIG_PATH` to another path). The job below assumes it's checked out alongside the workflow.
 
 **GitHub Actions example.**
 
@@ -63,7 +63,7 @@ jobs:
       - uses: actions/checkout@v4   # pulls brume.yml from the repo
       - name: Install pg_dump
         run: |
-          # Match the major version to your prod source (here: Postgres 17)
+          # pg_dump major version must be >= your prod source's (here: Postgres 17)
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
       - name: Install Brume
@@ -75,11 +75,17 @@ jobs:
           BRUME_HMAC_SECRET:    ${{ secrets.BRUME_HMAC_SECRET }}
           BRUME_FPE_KEY:        ${{ secrets.BRUME_FPE_KEY }}
           BRUME_SOURCE_HOST:    ${{ secrets.PROD_HOST }}
+          BRUME_SOURCE_DB:      app_production
+          BRUME_SOURCE_USER:    brume_reader
           BRUME_SOURCE_PASSWORD: ${{ secrets.PROD_RO_PASSWORD }}
+          BRUME_SCHEMA:         public
           BRUME_TARGET_HOST:    ${{ secrets.STAGING_HOST }}
+          BRUME_TARGET_PORT:    5432           # default is 5460
+          BRUME_TARGET_DB:      app_staging
+          BRUME_TARGET_USER:    app
           BRUME_TARGET_PASSWORD: ${{ secrets.STAGING_PASSWORD }}
         run: |
-          brume diag        # fails fast if pg_dump or connectivity is off
+          brume diag        # validates secrets and configuration
           brume plan
           brume execute
 ```

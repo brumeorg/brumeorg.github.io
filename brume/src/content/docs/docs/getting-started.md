@@ -7,7 +7,7 @@ Brume is distributed as a native CLI through the standard package managers for *
 
 ## Prerequisites
 
-- **PostgreSQL 14, 15, 16, 17 or 18** on the source database
+- **PostgreSQL 12, 13, 14, 15, 16, 17 or 18** on the source database
 - A **target** PostgreSQL instance *or* a writable directory for `.sql` output
 - A **read-only account** on the source database (recommended for safety)
 
@@ -54,7 +54,7 @@ brew upgrade brume
 
 ## Install `pg_dump`
 
-Brume shells out to `pg_dump` to replicate the source schema. The binary must be on `PATH` and **its major version must match the source's** — e.g. for Postgres 17, install `postgresql-client-17`.
+Brume shells out to `pg_dump` to replicate the source schema. The binary must be on `PATH` and **its major version must be greater than or equal to the source's** — e.g. for Postgres 17, install `postgresql-client-17` or newer.
 
 ```bash
 # Debian / Ubuntu
@@ -68,7 +68,7 @@ brew install libpq
 brew link --force libpq
 ```
 
-Replace `17` with the major version of your source. Run `brume diag` after install to verify the version matches.
+Replace `17` with the major version of your source. `brume execute` checks the `pg_dump` version against the source before copying anything.
 
 ## Verify the install
 
@@ -76,7 +76,7 @@ Replace `17` with the major version of your source. Run `brume diag` after insta
 brume --help
 ```
 
-You should see the list of available subcommands (`plan`, `execute`, `dry-run`, `audit`, `diag`). If the command is not found, check that your shell's `PATH` was reloaded.
+You should see the list of available subcommands (`init`, `scan`, `plan`, `dry-run`, `execute`, `audit`, `diag`). If the command is not found, check that your shell's `PATH` was reloaded. `brume --version` prints the installed version.
 
 ## Next step
 

@@ -9,13 +9,13 @@ This page collects everything you need to run Brume in production-grade conditio
 
 ### Parallelism
 
-`BRUME_PARALLELISM` (default `4`) controls the number of worker threads applied to the transformation stage. Bump it on machines with available cores and fast I/O.
+`BRUME_PARALLELISM` (default `20`) sets the maximum size of the connection pools Brume opens to the source and to the target — and so caps how many queries run at once on each side.
 
 ```bash
-BRUME_PARALLELISM=12 brume execute
+BRUME_PARALLELISM=8 brume execute
 ```
 
-Diminishing returns kick in past `2 × physical cores`. Watch your source database — Brume opens one read connection per worker.
+Lower it to spare a busy production database: every connection is a backend process on the source. Raise it only when both databases have headroom.
 
 ### `fk_depth`
 
@@ -66,13 +66,11 @@ See [`.env.brume` reference](/docs/env/#creating-a-read-only-account-on-the-sour
 
 ## PostgreSQL compatibility
 
-Brume supports **PostgreSQL 14, 15, 16, 17 and 18** on both source and target.
+Brume supports **PostgreSQL 12, 13, 14, 15, 16, 17 and 18** on both source and target.
 
-The `pg_dump` binary used by Brume (for schema replication) must be on `PATH` and **its major version must match the source's**. If your source is Postgres 17, install `postgresql-client-17`.
+The `pg_dump` binary used by Brume (for schema replication) must be on `PATH` and **its major version must be greater than or equal to the source's**. If your source is Postgres 17, install `postgresql-client-17` or newer.
 
-```bash
-brume diag  # verifies pg_dump version vs source
-```
+`brume execute` checks both before copying anything, and stops with `PREFLIGHT_PG_DUMP_NOT_FOUND` or `PREFLIGHT_PG_DUMP_VERSION_MISMATCH` — see [Preflight checks](/docs/cli/#preflight-checks).
 
 ## Logging
 
@@ -104,15 +102,11 @@ Each line is a JSON object with `timestamp`, `level`, `event`, `table`, and cont
 FATAL: connection refused (host=db.prod.internal port=5432)
 ```
 
-The source or target is unreachable. Run `brume diag` to isolate which one. Check VPN, security groups, `sslmode`.
+The source or target is unreachable. The error code tells which one: `CONNECTION_SOURCE_UNREACHABLE` or `CONNECTION_TARGET_UNREACHABLE` (`brume plan` only checks the source). Check VPN, security groups, `sslmode`.
 
-### `pg_dump version mismatch`
+### `PREFLIGHT_PG_DUMP_VERSION_MISMATCH`
 
-```
-pg_dump: error: server version: 17.2; pg_dump version: 14.10
-```
-
-Install the matching `postgresql-client-NN` package.
+The `pg_dump` on `PATH` is older than the source server. `brume execute` checks this before copying anything. Install a `postgresql-client-NN` package whose major version is at least the source's.
 
 ### `Strategy requires a type`
 
@@ -144,7 +138,7 @@ The path is wrong or doesn't exist in any row of the column. Inspect a few rows 
 warning: BRUME_HMAC_SECRET matches the value shipped by `brume init` — replace it before running `execute`
 ```
 
-Introduced in Brume 1.6. The run isn't blocked, but any pseudonymization produced with the placeholder is reversible by anyone with access to the Brume source. Generate a fresh high-entropy value (e.g. `openssl rand -base64 48` for `BRUME_HMAC_SECRET`, `openssl rand -hex 24` for `BRUME_FPE_KEY`) and rotate the `.env.brume`.
+Introduced in Brume 1.6. The run isn't blocked, but any pseudonymization produced with the placeholder is reversible by anyone with access to the Brume source. Generate a fresh high-entropy value (e.g. `openssl rand -base64 48` for `BRUME_HMAC_SECRET`, `openssl rand -hex 16` for `BRUME_FPE_KEY` — 32 characters) and rotate the `.env.brume`.
 
 ### `Uncovered PII columns` (from `brume plan`)
 
