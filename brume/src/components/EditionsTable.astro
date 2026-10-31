@@ -1,0 +1,54 @@
+---
+/**
+ * Open source / Enterprise comparison. A cell is `true` (included), `false`
+ * (not included) or a string.
+ * The explicit ARIA roles keep the table semantics when narrow screens restyle
+ * the rows as stacked blocks (changing `display` drops them in some browsers).
+ */
+const t = Astro.locals.t;
+const { caption, featureHeader } = Astro.props;
+const rows: Record<string, any>[] = Astro.props.rows;
+const editions = [
+	{ key: 'oss', label: 'Open source' },
+	{ key: 'ent', label: 'Enterprise' },
+];
+---
+
+<table class="brume-editions" role="table">
+	<caption class="sr-only">{caption}</caption>
+	<thead role="rowgroup">
+		<tr role="row">
+			<th role="columnheader" scope="col">{featureHeader}</th>
+			{editions.map(({ label }) => <th role="columnheader" scope="col">{label}</th>)}
+		</tr>
+	</thead>
+	<tbody role="rowgroup">
+		{
+			rows.map((row) => (
+				<tr role="row">
+					<th role="rowheader" scope="row" set:html={row.feature} />
+					{editions.map(({ key, label }) => {
+						const value = row[key];
+						return (
+							<td role="cell" data-label={label}>
+								{value === true && (
+									<>
+										<span class="brume-editions-yes" aria-hidden="true">✓</span>
+										<span class="sr-only">{t('enterprise.table.included')}</span>
+									</>
+								)}
+								{value === false && (
+									<>
+										<span class="brume-editions-no" aria-hidden="true">–</span>
+										<span class="sr-only">{t('enterprise.table.notIncluded')}</span>
+									</>
+								)}
+								{typeof value === 'string' && <Fragment set:html={value} />}
+							</td>
+						);
+					})}
+				</tr>
+			))
+		}
+	</tbody>
+</table>

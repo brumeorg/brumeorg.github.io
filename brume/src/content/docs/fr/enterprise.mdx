@@ -1,40 +1,198 @@
 ---
-title: Brume Édition Entreprise
-description: Brume Entreprise — support prioritaire, SSO, journaux d'audit et SLA pour les équipes en production.
+title: 'Brume Enterprise : pseudonymisation PostgreSQL pour les équipes exigeantes'
+description: 'Édition Enterprise de Brume : support avec SLA, reconnaissance de données sur mesure, gouvernance. À partir de 5 000 € HT/an. PostgreSQL reste gratuit et open source.'
 template: splash
+head:
+  - tag: meta
+    attrs:
+      name: twitter:title
+      content: 'Brume Enterprise : pseudonymisation PostgreSQL pour les équipes exigeantes'
+  - tag: meta
+    attrs:
+      name: twitter:description
+      content: 'Édition Enterprise de Brume : support avec SLA, reconnaissance de données sur mesure, gouvernance. À partir de 5 000 € HT/an. PostgreSQL reste gratuit et open source.'
 hero:
-  title: 'Brume <span class="hero-accent">Entreprise</span>'
-  tagline: 'Pseudonymisation de niveau production pour les équipes avec des exigences strictes de conformité, gouvernance et disponibilité.'
+  title: 'Brume <span class="hero-accent">Enterprise</span>'
+  tagline: 'Des copies PostgreSQL réalistes pour vos développeurs, et la preuve pour votre DPO.'
+  actions:
+    - text: Nous contacter par mail
+      link: 'mailto:frederik@brume.software?subject=Brume%20Enterprise%20-%20demande%20de%20contact'
+      variant: primary
+    - text: Comparer les éditions
+      link: '#editions'
+      variant: secondary
 ---
 
+import EditionsTable from '../../../components/EditionsTable.astro';
 import EnterpriseContactForm from '../../../components/EnterpriseContactForm.astro';
+import MailtoButton from '../../../components/MailtoButton.astro';
 
-<section class="brume-enterprise-section">
-  <h2 class="brume-enterprise-eyebrow">Ce que vous obtenez en plus de l'édition open source</h2>
-  <ul class="brume-enterprise-features">
-    <li>
-      <h3>SLA &amp; support prioritaire</h3>
-      <p>Ligne directe avec les mainteneurs, avec des délais de réponse garantis, un chemin d'escalade et une couverture week-end disponible.</p>
-    </li>
-    <li>
-      <h3>PII personnalisées</h3>
-      <p>On étend Brume pour reconnaître vos PII spécifiques au domaine (identifiants médicaux, numéros de compte internes, MSISDN télécom, tout ce qui n'est pas couvert par les types sémantiques par défaut). La pseudonymisation reste déterministe et sûre pour les FK.</p>
-    </li>
-    <li>
-      <h3>Interface Web</h3>
-      <p>Une console graphique au-dessus de la CLI : parcourez les PII détectées par <code>brume scan</code>, éditez <code>brume.yml</code> avec validation inline, lancez les runs et consultez l'historique — sans quitter le navigateur.</p>
-    </li>
-    <li>
-      <h3>SSO</h3>
-      <p>Intégration single sign-on (SAML 2.0, OIDC) avec votre fournisseur d'identité — Okta, Entra ID, Google Workspace, Keycloak. Contrôle d'accès par rôle et provisioning SCIM inclus.</p>
-    </li>
-  </ul>
+export const editionRows = [
+  { feature: 'Stratégies FAKE, MASK, HASH, NULLIFY, FPE_ID / FPE_UUID, DATE_SHIFT', oss: true, ent: true },
+  { feature: 'Préservation des clés étrangères', oss: true, ent: true },
+  { feature: 'Extraction ciblée (sous-ensemble cohérent)', oss: true, ent: true },
+  { feature: 'Configuration <code>brume.yml</code> versionnable, types sémantiques, chemins JSONB', oss: true, ent: true },
+  { feature: 'Ligne de commande, paquets apt / dnf / Homebrew', oss: true, ent: true },
+  { feature: 'Détection des données personnelles (<code>brume scan</code>)', oss: true, ent: true },
+  { feature: 'PostgreSQL', oss: true, ent: true },
+  { feature: 'Reconnaissance de données personnelles sur mesure (identifiants médicaux, numéros de compte internes…)', oss: false, ent: true },
+  { feature: 'Console web : données détectées, édition de <code>brume.yml</code> avec validation, exécutions, historique', oss: false, ent: true },
+  { feature: 'SSO (SAML 2.0 / OIDC), contrôle d’accès par rôle, provisionnement SCIM', oss: false, ent: true },
+  { feature: 'Journal d’audit', oss: false, ent: true },
+  { feature: 'Support prioritaire avec engagement de délai (SLA)', oss: 'Communauté (GitHub)', ent: true },
+  { feature: 'SQL Server', oss: false, ent: 'Offre Grands comptes' },
+  { feature: 'Prix', oss: 'Gratuit', ent: 'À partir de 5&nbsp;000&nbsp;€ HT / an' },
+];
+
+<section class="brume-enterprise-section not-content">
+  <h2 class="brume-enterprise-title">Pourquoi Brume&nbsp;?</h2>
+  <div class="brume-enterprise-grid">
+    <div class="brume-enterprise-card">
+      <h3>Pour les équipes techniques</h3>
+      <ul class="brume-enterprise-list">
+        <li>Déboguer et tester sur des données réalistes, en une commande.</li>
+        <li>Clés étrangères intactes, résultats reproductibles, extraction d'un sous-ensemble cohérent.</li>
+        <li>Règles écrites dans un fichier <code>brume.yml</code> versionné, relu comme du code.</li>
+      </ul>
+    </div>
+    <div class="brume-enterprise-card">
+      <h3>Pour le DPO et le RSSI</h3>
+      <ul class="brume-enterprise-list">
+        <li>Plus de copies de production brutes en recette ou en local.</li>
+        <li>Des règles de pseudonymisation lisibles, validables avant chaque export.</li>
+        <li>Un outil open source, auditable, qui s'exécute dans votre infrastructure.</li>
+      </ul>
+    </div>
+  </div>
 </section>
 
-<section class="brume-enterprise-section brume-enterprise-contact">
-  <h2 class="brume-enterprise-eyebrow">Parlez-nous</h2>
-  <p class="brume-enterprise-lead">
-    Dites-nous un mot sur votre environnement. On revient vers vous sous deux jours ouvrés.
-  </p>
+<section id="editions" class="brume-enterprise-section not-content">
+  <h2 class="brume-enterprise-title">Comparatif des éditions</h2>
+  <EditionsTable caption="Comparatif des éditions Open source et Enterprise de Brume" featureHeader="Fonctionnalité" rows={editionRows} />
+  <p class="brume-enterprise-pledge">PostgreSQL est et restera gratuit et open source, sans limite. L'édition Enterprise ajoute ce dont votre organisation a besoin&nbsp;: support, gouvernance, sécurité, et d'autres bases de données.</p>
+</section>
+
+<section id="tarifs" class="brume-enterprise-section not-content">
+  <h2 class="brume-enterprise-title">Tarifs</h2>
+  <div class="brume-enterprise-grid">
+    <div class="brume-enterprise-card brume-enterprise-plan">
+      <h3>Open source</h3>
+      <p class="brume-enterprise-price">0&nbsp;€</p>
+      <ul class="brume-enterprise-list">
+        <li>Toutes les fonctionnalités de pseudonymisation PostgreSQL.</li>
+        <li>Support communautaire sur GitHub.</li>
+      </ul>
+      <a class="brume-btn brume-btn-secondary" href="/fr/docs/getting-started/">Démarrer</a>
+    </div>
+    <div class="brume-enterprise-card brume-enterprise-plan brume-enterprise-plan-featured">
+      <h3>Enterprise</h3>
+      <p class="brume-enterprise-price">À partir de 5&nbsp;000&nbsp;€&nbsp;HT&nbsp;/&nbsp;an</p>
+      <p>Selon le nombre de bases de production couvertes&nbsp;:</p>
+      <ul class="brume-enterprise-tiers">
+        <li><strong>Enterprise</strong><span>5&nbsp;000&nbsp;€&nbsp;HT par an</span><small>Jusqu'à 3 bases de production</small></li>
+        <li><strong>Enterprise&nbsp;+</strong><span>12&nbsp;000&nbsp;€&nbsp;HT par an</span><small>Jusqu'à 15 bases de production</small></li>
+        <li><strong>Grands comptes</strong><span>Sur devis</span><small>Bases illimitées, SQL Server, SLA renforcé</small></li>
+      </ul>
+      <p>Inclus&nbsp;:</p>
+      <ul class="brume-enterprise-list">
+        <li>Support prioritaire avec SLA.</li>
+        <li>Reconnaissance de données sur mesure.</li>
+        <li>Console web.</li>
+        <li>SSO, contrôle d'accès par rôle, provisionnement SCIM.</li>
+        <li>Journal d'audit.</li>
+      </ul>
+      <a class="brume-btn brume-btn-primary" href="mailto:frederik@brume.software?subject=Brume%20Enterprise%20-%20demande%20de%20contact">Nous contacter par mail</a>
+    </div>
+  </div>
+</section>
+
+<section id="partenaires" class="brume-enterprise-section not-content">
+  <h2 class="brume-enterprise-title">Devenez partenaire de lancement</h2>
+  <p class="brume-enterprise-lead">Nous accompagnons un petit nombre d'entreprises pour déployer Brume Enterprise dans leurs conditions réelles.</p>
+  <div class="brume-enterprise-grid">
+    <div class="brume-enterprise-card">
+      <h3>Ce que vous obtenez</h3>
+      <ul class="brume-enterprise-list">
+        <li>30&nbsp;% de remise sur la première année&nbsp;;</li>
+        <li>un accompagnement personnalisé à la mise en place, directement avec le fondateur&nbsp;;</li>
+        <li>une influence directe sur la feuille de route.</li>
+      </ul>
+    </div>
+    <div class="brume-enterprise-card">
+      <h3>En échange</h3>
+      <p>Des retours réguliers pendant le déploiement et, avec votre accord, un témoignage ou votre logo sur ce site.</p>
+    </div>
+  </div>
+  <div class="brume-enterprise-actions">
+    <p class="brume-enterprise-mention">5 places disponibles.</p>
+    <MailtoButton subject="Programme partenaires de lancement" fields={['Entreprise :', 'Secteur :', 'Nombre de bases PostgreSQL en production :', 'Besoin principal :']}>Candidater</MailtoButton>
+    <p class="brume-form-note">Ces informations servent uniquement à étudier votre candidature.</p>
+  </div>
+</section>
+
+<section id="sql-server" class="brume-enterprise-section brume-enterprise-narrow not-content">
+  <h2 class="brume-enterprise-title">Brume prend aussi en charge SQL Server</h2>
+  <p class="brume-enterprise-lead">Les mêmes garanties (résultats reproductibles, clés étrangères préservées, extraction ciblée) pour vos bases SQL Server. Disponible dans l'offre Grands comptes.</p>
+  <div class="brume-enterprise-actions">
+    <MailtoButton subject="Brume Enterprise - SQL Server" fields={['Entreprise :', 'Version de SQL Server :', 'Taille approximative des bases :', 'Échéance souhaitée :']}>Nous contacter pour SQL Server</MailtoButton>
+    <p class="brume-form-note">Ces informations servent à répondre à votre demande.</p>
+  </div>
+</section>
+
+<section class="brume-enterprise-section not-content">
+  <h2 class="brume-enterprise-title">Sécurité et conformité</h2>
+  <div class="brume-enterprise-grid">
+    <div class="brume-enterprise-card">
+      <h3>Vos données restent chez vous.</h3>
+      <p>Brume s'exécute dans votre infrastructure. Aucune donnée ni télémétrie n'est envoyée à Brume.</p>
+    </div>
+    <div class="brume-enterprise-card">
+      <h3>Un code auditable.</h3>
+      <p>Le cœur de Brume est open source, et vos équipes peuvent le relire.</p>
+    </div>
+    <div class="brume-enterprise-card">
+      <h3>Des règles relisibles et versionnées.</h3>
+      <p>Chaque colonne a sa règle dans <code>brume.yml</code>, validable avant chaque export.</p>
+    </div>
+    <div class="brume-enterprise-card">
+      <h3>Une mesure reconnue par le RGPD.</h3>
+      <p>La pseudonymisation est citée par le RGPD comme mesure de protection (articles 25 et 32).</p>
+    </div>
+  </div>
+</section>
+
+<section class="brume-enterprise-section brume-enterprise-narrow not-content">
+  <h2 class="brume-enterprise-title">FAQ</h2>
+  <div class="brume-enterprise-faq">
+    <div>
+      <h3>Quelle est la différence entre l'édition open source et l'édition Enterprise&nbsp;?</h3>
+      <p>L'open source couvre toute la pseudonymisation PostgreSQL. Enterprise ajoute le support avec SLA, la reconnaissance de données sur mesure, les fonctionnalités de gouvernance et de sécurité, et d'autres bases de données.</p>
+    </div>
+    <div>
+      <h3>L'édition open source est-elle limitée dans le temps ou en volume&nbsp;?</h3>
+      <p>Non. Elle est gratuite et sans limite pour PostgreSQL.</p>
+    </div>
+    <div>
+      <h3>Nos données sortent-elles de notre infrastructure&nbsp;?</h3>
+      <p>Non.</p>
+    </div>
+    <div>
+      <h3>Peut-on tester avant d'acheter&nbsp;?</h3>
+      <p>Oui&nbsp;: l'édition open source est utilisable dès maintenant, et nous pouvons organiser un pilote accompagné.</p>
+    </div>
+    <div>
+      <h3>Quelles bases de données sont prises en charge&nbsp;?</h3>
+      <p>PostgreSQL, et SQL Server dans l'offre Grands comptes.</p>
+    </div>
+    <div>
+      <h3>Quels sont les délais de réponse du support&nbsp;?</h3>
+      <p>24&nbsp;h pour les SLA.</p>
+    </div>
+  </div>
+</section>
+
+<section id="contact" class="brume-enterprise-section brume-enterprise-narrow not-content">
+  <h2 class="brume-enterprise-title">Contact</h2>
+  <p class="brume-enterprise-lead">Dites-nous un mot sur votre environnement.</p>
   <EnterpriseContactForm />
 </section>

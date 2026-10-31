@@ -939,77 +939,352 @@ main > .content-panel:first-of-type:has(.hero)::after {
 }
 
 /* ============================================================
-   Enterprise page (features grid + mailto form)
+   Enterprise page (editions, pricing, programs + mailto form)
    ============================================================ */
+/* Text colors that keep WCAG AA contrast on this page's cards, in both themes */
+:root {
+	--brume-sage-text: var(--brume-sage-soft);
+	--brume-muted-text: var(--sl-color-gray-2);
+}
+
+[data-theme='light'] {
+	--brume-sage-text: #466a3e;
+	--brume-muted-text: #5c5f77;
+}
+
+[data-theme='light'] .hero [data-page-title] .hero-accent {
+	color: var(--brume-sage-text);
+}
+
 .brume-enterprise-section {
 	max-width: 1100px;
-	margin: 3rem auto;
+	margin: 4rem auto;
 	padding: 0 1rem;
 }
 
-.brume-enterprise-eyebrow {
-	font-family: 'Be Vietnam Pro', sans-serif;
-	font-size: 0.75rem !important;
-	font-weight: 600 !important;
-	letter-spacing: 0.15em;
-	text-transform: uppercase;
-	color: var(--sl-color-gray-3) !important;
-	margin: 0 0 1.5rem !important;
+.brume-enterprise-narrow {
+	max-width: 820px;
+}
+
+.brume-enterprise-title {
+	margin: 0 0 1.5rem;
+	font-family: 'Asap Condensed', sans-serif;
+	font-size: clamp(1.6rem, 1.3rem + 1.2vw, 2.1rem);
+	font-weight: 500;
+	line-height: 1.15;
+	color: var(--sl-color-white);
 	text-align: center;
 }
 
-.brume-enterprise-features {
-	list-style: none;
-	padding: 0;
-	margin: 0;
+.brume-enterprise-lead {
+	max-width: 65ch;
+	margin: 0 auto 2rem;
+	text-align: center;
+	color: var(--brume-muted-text);
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-weight: 300;
+}
+
+.brume-enterprise-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 1rem;
 }
 
-.brume-enterprise-features li {
+.brume-enterprise-card {
 	padding: 1.25rem;
 	border: 1px solid var(--brume-hairline);
 	border-radius: 14px;
 	background: rgba(255, 255, 255, 0.025);
 }
 
-.brume-enterprise-features h3 {
+.brume-enterprise-card h3,
+.brume-enterprise-faq h3 {
 	margin: 0 0 0.45rem;
 	font-family: 'Asap Condensed', sans-serif;
 	font-size: 1.2rem;
 	font-weight: 500;
+	line-height: 1.25;
 	color: var(--sl-color-white);
 }
 
-.brume-enterprise-features p {
+.brume-enterprise-card p,
+.brume-enterprise-faq p,
+.brume-enterprise-list {
 	margin: 0;
 	font-family: 'Be Vietnam Pro', sans-serif;
 	font-weight: 300;
-	color: var(--sl-color-gray-2);
+	color: var(--brume-muted-text);
 	font-size: 0.92rem;
 	line-height: 1.55;
 }
 
-.brume-enterprise-features code {
+.brume-enterprise-list {
+	padding-inline-start: 1.1rem;
+	list-style: disc;
+}
+
+.brume-enterprise-list li + li {
+	margin-top: 0.4rem;
+}
+
+.brume-enterprise-list li::marker {
+	color: var(--brume-sage-text);
+}
+
+.brume-enterprise-section code,
+.brume-editions code {
 	font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 	font-size: 0.85em;
 	padding: 0.05em 0.35em;
 	border-radius: 4px;
 	background: var(--brume-sage-tint);
-	color: var(--brume-sage);
+	color: var(--brume-sage-text);
+	white-space: nowrap;
 }
 
-.brume-enterprise-contact {
-	max-width: 720px;
-}
-
-.brume-enterprise-lead {
+.brume-enterprise-pledge {
+	max-width: 70ch;
+	margin: 1.5rem auto 0;
 	text-align: center;
-	color: var(--sl-color-gray-2);
 	font-family: 'Be Vietnam Pro', sans-serif;
+	font-weight: 400;
+	color: var(--sl-color-white);
+}
+
+.brume-enterprise-actions {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.75rem;
+	margin-top: 1.5rem;
+}
+
+.brume-enterprise-mention {
+	margin: 0;
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-weight: 400;
+	color: var(--sl-color-white);
+}
+
+/* ----- Hero without image: one column, buttons side by side ----- */
+body:has(.hero) .hero:not(:has(.hero-html)) {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+/* ----- Hero buttons, aligned on .brume-btn ----- */
+.hero .actions .sl-link-button.primary {
+	background: var(--brume-sage);
+	border-color: var(--brume-sage);
+	color: #14181d;
+}
+
+.hero .actions .sl-link-button.primary:hover {
+	background: var(--brume-sage-soft);
+	border-color: var(--brume-sage-soft);
+	color: #14181d;
+}
+
+/* ----- Editions table ----- */
+.brume-editions {
+	width: 100%;
+	border-collapse: collapse;
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-size: 0.92rem;
+	line-height: 1.45;
+}
+
+.brume-editions th,
+.brume-editions td {
+	padding: 0.7rem 1rem;
+	border-bottom: 1px solid var(--brume-hairline);
+	vertical-align: middle;
+}
+
+.brume-editions thead th {
+	font-family: 'Asap Condensed', sans-serif;
+	font-size: 1.1rem;
+	font-weight: 500;
+	color: var(--sl-color-white);
+	text-align: center;
+}
+
+.brume-editions thead th:first-child,
+.brume-editions tbody th {
+	text-align: start;
+}
+
+.brume-editions tbody th {
+	width: 56%;
 	font-weight: 300;
-	margin: 0 0 2rem;
+	color: var(--brume-muted-text);
+}
+
+.brume-editions td {
+	width: 22%;
+	text-align: center;
+	color: var(--sl-color-white);
+}
+
+.brume-editions td:last-child,
+.brume-editions thead th:last-child {
+	background: var(--brume-sage-tint-soft);
+}
+
+.brume-editions-yes {
+	color: var(--brume-sage-text);
+	font-weight: 600;
+}
+
+.brume-editions-no {
+	color: var(--brume-muted-text);
+}
+
+.brume-editions tbody tr:last-child th,
+.brume-editions tbody tr:last-child td {
+	border-bottom: 0;
+	font-weight: 500;
+	color: var(--sl-color-white);
+}
+
+/* ----- Pricing ----- */
+.brume-enterprise-plan {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.brume-enterprise-plan-featured {
+	border-color: var(--brume-sage);
+	background: var(--brume-sage-tint-soft);
+}
+
+.brume-enterprise-card .brume-enterprise-price {
+	font-family: 'Asap Condensed', sans-serif;
+	font-size: clamp(1.5rem, 1.3rem + 0.8vw, 1.9rem);
+	font-weight: 500;
+	line-height: 1.15;
+	color: var(--sl-color-white);
+}
+
+.brume-enterprise-plan .brume-enterprise-list {
+	margin-bottom: 0.75rem;
+}
+
+.brume-enterprise-tiers {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-size: 0.92rem;
+	line-height: 1.45;
+}
+
+.brume-enterprise-tiers li {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 0.1rem 1rem;
+	padding: 0.6rem 0;
+	border-top: 1px solid var(--brume-hairline);
+}
+
+.brume-enterprise-tiers li:last-child {
+	border-bottom: 1px solid var(--brume-hairline);
+}
+
+.brume-enterprise-tiers strong {
+	font-weight: 500;
+	color: var(--sl-color-white);
+}
+
+.brume-enterprise-tiers span {
+	font-weight: 400;
+	color: var(--sl-color-white);
+	text-align: end;
+}
+
+.brume-enterprise-tiers small {
+	grid-column: 1 / -1;
+	font-size: 0.85rem;
+	font-weight: 300;
+	color: var(--brume-muted-text);
+}
+
+.brume-enterprise-plan .brume-btn {
+	align-self: flex-start;
+	margin-top: auto;
+}
+
+/* ----- FAQ ----- */
+.brume-enterprise-faq > div {
+	padding: 1rem 0;
+	border-bottom: 1px solid var(--brume-hairline);
+}
+
+.brume-enterprise-faq > div:last-child {
+	border-bottom: 0;
+}
+
+@media (max-width: 640px) {
+	.brume-enterprise-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.brume-enterprise-section {
+		padding: 0;
+	}
+
+	/* Stacked rows: the feature takes the full width, both editions sit below it */
+	.brume-editions,
+	.brume-editions tbody {
+		display: block;
+	}
+
+	.brume-editions thead {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+	}
+
+	.brume-editions tbody tr {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		padding: 0.75rem 0;
+		border-bottom: 1px solid var(--brume-hairline);
+	}
+
+	.brume-editions tbody tr:last-child {
+		border-bottom: 0;
+	}
+
+	.brume-editions tbody th,
+	.brume-editions td {
+		display: block;
+		width: auto;
+		padding: 0;
+		border-bottom: 0;
+	}
+
+	.brume-editions tbody th {
+		grid-column: 1 / -1;
+		margin-bottom: 0.5rem;
+	}
+
+	.brume-editions td {
+		padding: 0.4rem 0.6rem;
+		border-radius: 8px;
+		text-align: start;
+	}
+
+	.brume-editions td::before {
+		content: attr(data-label);
+		display: block;
+		font-size: 0.75rem;
+		font-weight: 400;
+		color: var(--brume-muted-text);
+	}
 }
 
 /* ----- Form ----- */
@@ -1040,12 +1315,47 @@ main > .content-panel:first-of-type:has(.hero)::after {
 	gap: 0.4rem;
 }
 
-.brume-form-field > span {
+.brume-form-grid .brume-form-field-wide {
+	grid-column: 1 / -1;
+}
+
+.brume-form-field > span,
+.brume-form-checks legend {
 	font-family: 'Be Vietnam Pro', sans-serif;
 	font-size: 0.78rem;
 	font-weight: 500;
-	color: var(--sl-color-gray-2);
+	color: var(--brume-muted-text);
 	letter-spacing: 0.02em;
+}
+
+.brume-form-checks {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1.25rem;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.brume-form-checks legend {
+	margin-bottom: 0.5rem;
+	padding: 0;
+}
+
+.brume-form-checks label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	font-family: 'Be Vietnam Pro', sans-serif;
+	font-size: 0.92rem;
+	font-weight: 300;
+	color: var(--sl-color-white);
+}
+
+.brume-form-checks input {
+	width: 1rem;
+	height: 1rem;
+	accent-color: var(--brume-sage-strong);
 }
 
 .brume-form-field input,
@@ -1100,14 +1410,14 @@ main > .content-panel:first-of-type:has(.hero)::after {
 .brume-form-note {
 	margin: 0;
 	text-align: center;
-	color: var(--sl-color-gray-3);
+	color: var(--brume-muted-text);
 	font-family: 'Be Vietnam Pro', sans-serif;
 	font-size: 0.85rem;
 	font-weight: 300;
 }
 
 .brume-form-note a {
-	color: var(--brume-sage);
+	color: var(--brume-sage-text);
 	text-decoration: none;
 	border-bottom: 1px solid var(--brume-sage-tint);
 }
