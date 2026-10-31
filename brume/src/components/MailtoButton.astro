@@ -1,0 +1,9 @@
+---
+const { subject, fields = [] } = Astro.props;
+const encode = (value: string) => encodeURIComponent(value).replace(/'/g, '%27');
+// RFC 6068: line breaks in a mailto body must be CRLF.
+const body = fields.map((field: string) => `${field} `).join('\r\n');
+const href = `mailto:frederik@brume.software?subject=${encode(subject)}&body=${encode(body)}`;
+---
+
+<a class="brume-btn brume-btn-primary" href={href}><slot /></a>

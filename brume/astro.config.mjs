@@ -243,11 +243,6 @@ export default defineConfig({
 							translations: { fr: 'Mode fusion' },
 							slug: 'roadmap/merge-mode',
 						},
-						{
-							label: 'Other databases',
-							translations: { fr: 'Autres bases de données' },
-							slug: 'roadmap/other-databases',
-						},
 					],
 				},
 				// --- Support section ---
