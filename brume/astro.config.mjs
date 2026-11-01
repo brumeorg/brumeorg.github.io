@@ -208,6 +208,7 @@ export default defineConfig({
 							slug: 'guides/brume-vs-postgresql-anonymizer',
 						},
 						{ label: 'Brume vs pganonymize', slug: 'guides/brume-vs-pganonymize' },
+						{ label: 'Brume vs Greenmask', slug: 'guides/brume-vs-greenmask' },
 					],
 				},
 				// --- Roadmap section ---

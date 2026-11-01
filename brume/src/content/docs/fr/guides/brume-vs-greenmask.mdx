@@ -1,0 +1,214 @@
+---
+title: Brume vs Greenmask
+description: 'Brume vs Greenmask : copie ciblée ou dump logique ? Sous-ensembles, clés étrangères, déterminisme, contrôles : ce que disent leurs documentations.'
+---
+
+import GuideCta from '../../../../components/GuideCta.astro';
+
+[Greenmask](https://www.greenmask.io/) et Brume ont beaucoup en commun : deux CLI open source sous licence Apache 2.0, pilotées par un fichier YAML, qui lisent une base PostgreSQL de l'extérieur et peuvent produire une copie réduite et transformée. Leurs points de départ diffèrent : Greenmask se présente comme un outil de dump et de restauration logiques, proche de `pg_dump` et `pg_restore` ; Brume comme un outil de copie d'un sous-ensemble pseudonymisé. Cette page décrit ce que chacun documente et ne cherche pas de vainqueur général.
+
+:::note[Sources et limites]
+Les affirmations sur Greenmask proviennent de [sa documentation officielle](https://www.greenmask.io/docs/greenmask/) et de [son dépôt](https://github.com/GreenmaskIO/greenmask) (version 0.2.26, vérifiés en novembre 2026). Celles sur Brume proviennent de [la documentation de ce site](/fr/docs/) et de son code (version 2.1). Nous n'avons pas fait tourner les deux outils côte à côte : cette page ne conclut rien sur les performances, et « non décrit dans sa documentation » ne veut pas dire « impossible ». Si quelque chose n'est plus à jour, [dites-le-nous](https://github.com/brumeorg/Brume/issues).
+:::
+
+## En un coup d'œil
+
+| | Greenmask | Brume |
+|---|---|---|
+| **Forme** | CLI en Go, binaire unique : script d'installation, Homebrew, Docker, sources | CLI native : apt, dnf, Homebrew. Image Docker officielle [planifiée](/fr/roadmap/containerization/) |
+| **Licence** | Apache 2.0 | Apache 2.0 |
+| **Bases** | PostgreSQL ; MySQL en bêta | PostgreSQL dans l'édition open source |
+| **Versions de PostgreSQL** | 14 à 18 | 12 à 18 |
+| **Fonctionnement** | `dump` produit un dump logique transformé, `restore` le charge ensuite | `execute` lit la source et écrit directement dans la cible |
+| **Sortie** | Dump au format répertoire, compatible `pg_restore`, stocké dans un répertoire, sur S3, Azure ou SSH | Base PostgreSQL, ou fichier `.sql` restaurable avec `psql` |
+| **Portée par défaut** | Toute la base, comme `pg_dump` | Les lignes atteintes depuis `extraction.tables`, dans un seul schéma (`BRUME_SCHEMA`) |
+| **Sous-ensemble** | Conditions SQL par table, propagées aux tables qui référencent la table filtrée | Filtres et rayon `fk_depth` dans les deux sens, parents conservés par défaut |
+| **Relations sans clé étrangère** | Références virtuelles et polymorphes, y compris depuis du JSON | Le parcours suit les clés étrangères déclarées |
+| **Déterminisme** | Au choix par transformateur : `random` par défaut, `hash` à activer ; sel recommandé | Toujours : chaque stratégie est déterministe et à clé ; deux secrets obligatoires |
+| **Clés étrangères** | `apply_for_references` sur la clé, avec le moteur `hash`, pour les transformateurs listés | Automatique pour `FPE_ID`, `FPE_UUID`, `HASH` et `FAKE` |
+| **Unicité des clés primaires** | La documentation prévient que le moteur `hash` ne garantit pas l'unicité | `FPE_ID` et `FPE_UUID` sont bijectifs, donc sans collision |
+| **Transformations** | Une cinquantaine de transformateurs, dont `Template`, `TemplateRecord`, `Json` et `Cmd` (programme externe) | Huit stratégies, combinées à des types sémantiques |
+| **Logique entre colonnes** | Paramètres dynamiques, conditions `when` | `linked_columns` (même valeur dans plusieurs colonnes) ; pas de condition par ligne documentée |
+| **Contrôles avant exécution** | `validate` : contraintes menacées, diff de données, diff de schéma | `plan` : volumes, colonnes non couvertes, configurations refusées ; `dry-run` |
+| **Proposition de règles** | Non décrite dans sa documentation | `brume scan`, à partir des noms et types de colonnes |
+| **Mesure du risque résiduel** | Non décrite dans sa documentation | `brume audit --anonymity` (k-anonymat) |
+| **Ajout à une cible existante** | `--inserts`, `--on-conflict-do-nothing`, `--restore-in-order` | Non : `execute` reconstruit la cible ; [mode fusion](/fr/roadmap/merge-mode/) planifié |
+
+## Deux points de départ différents
+
+**Greenmask est construit autour du dump logique.** Sa [page d'architecture](https://www.greenmask.io/docs/greenmask/architecture/) explique qu'il traite lui-même la section des données et délègue le schéma (`pre-data`, `post-data`) à `pg_dump` et `pg_restore`. Sa commande [`dump`](https://www.greenmask.io/docs/greenmask/commands/dump/) reprend l'essentiel des options de `pg_dump`, et ses dumps peuvent être restaurés avec `pg_restore`. Le résultat est un artefact stocké, que l'on peut lister, inspecter, restaurer plusieurs fois ou restaurer en partie :
+
+```
+source ──▶ greenmask dump (transforme) ──▶ stockage ──▶ greenmask restore ──▶ cible
+```
+
+Sa documentation le présente aussi comme un outil de sauvegarde et de restauration du quotidien, ce que Brume ne prétend pas être.
+
+**Brume est construit autour de la copie ciblée.** Il part des lignes que vous sélectionnez, suit les clés étrangères et écrit directement dans une base cible ou un fichier `.sql` :
+
+```
+source (lecture seule) ──▶ brume execute (transforme à la volée) ──▶ base cible ou .sql
+```
+
+**Ce qui est commun.** Dans les deux cas, la transformation a lieu avant l'écriture : le dump de Greenmask contient les valeurs transformées, et Brume transforme chaque ligne avant de l'écrire. Les deux dépendent des utilitaires PostgreSQL pour le schéma : Greenmask demande des utilitaires de la même version majeure que le serveur de destination, Brume un `pg_dump` de version majeure au moins égale à celle de la source. Enfin, dans les deux cas, **une colonne sans règle est copiée telle quelle** ([notes de version 0.2.25](https://www.greenmask.io/docs/greenmask/release_notes/greenmask_0_2_25/) pour Greenmask, [`KEEP`](/fr/docs/strategies/#keep) pour Brume). Vérifier la couverture reste donc nécessaire, quel que soit l'outil.
+
+**Ce qui diffère sur le périmètre.** Greenmask travaille sur la base comme `pg_dump` : plusieurs schémas, sélection par `--schema` ou `--table`, objets volumineux avec `--blobs`. Brume traite un schéma par exécution, désigné par `BRUME_SCHEMA`, et sa documentation ne mentionne pas les objets volumineux.
+
+## Sous-ensembles
+
+Les deux outils savent produire une base réduite dont les contraintes tiennent. Ils ne raisonnent pas de la même façon.
+
+**Greenmask filtre par propagation.** Vous posez des [`subset_conds`](https://www.greenmask.io/docs/greenmask/database_subset/) sur une table, et Greenmask génère des requêtes avec jointures qui filtrent cette table ainsi que celles qui la référencent, directement ou non, sans limite de profondeur. Sa documentation précise le cas inverse : une table reste entière si elle ne porte pas de condition et ne référence aucune table filtrée. Les colonnes doivent être écrites avec leur schéma et leur table, pour éviter toute ambiguïté.
+
+**Brume part de lignes et compte les sauts.** Vous sélectionnez des lignes de départ avec des filtres. [`fk_depth`](/fr/docs/configuration/#extractionfk_depth) est un rayon compté vers les parents comme vers les enfants, et `orphan_policy: KEEP_PARENTS` (le défaut) ajoute les parents dont les lignes copiées ont besoin, quelle que soit leur distance. `brume plan` donne le nombre de lignes par table avant toute écriture.
+
+Le même besoin, un client et ce qui en dépend, s'écrit ainsi :
+
+```yaml
+# Greenmask
+dump:
+  transformation:
+    - schema: "public"
+      name: "customers"
+      subset_conds:
+        - "public.customers.customer_id IN (1)"
+```
+
+```yaml
+# Brume
+extraction:
+  fk_depth: 2
+  tables:
+    - table: customers
+      filter: "customer_id IN (1)"
+```
+
+Sur un schéma où `order_items` référence à la fois `orders` et `products`, ces deux configurations ne donnent pas le même résultat. Ce tableau est déduit des deux documentations, il n'a pas été exécuté :
+
+| Table | Greenmask | Brume |
+|---|---|---|
+| `customers` | Le client 1 | Le client 1 |
+| `orders` | Ses commandes | Ses commandes |
+| `order_items` | Leurs lignes | Leurs lignes |
+| `products` (parent de `order_items`, sans condition) | Toute la table | Seulement les produits référencés |
+| Une table sans lien avec les précédentes | Toute la table | Aucune ligne |
+
+Aucun des deux comportements n'est faux, ils répondent à des attentes différentes. Avec Greenmask, on peut poser une condition sur `products`, mais elle réduit aussi les `order_items` qui la référencent, et on peut écarter les données d'une table avec `--exclude-table-data`. Avec Brume, une table utile mais sans lien doit être ajoutée à `extraction.tables`, et des descendants situés au-delà de `fk_depth` ne sont pas copiés tant que le rayon n'est pas augmenté.
+
+Greenmask documente plusieurs cas que la documentation de Brume ne décrit pas :
+
+- **Références virtuelles** : déclarer une relation sans contrainte en base, y compris à partir d'une expression sur du JSONB. Le parcours de Brume suit les clés étrangères déclarées ; [`linked_columns`](/fr/docs/configuration/#anonymizationlinked_columns) aligne des valeurs entre colonnes, sans influencer le parcours.
+- **Références polymorphes** : le cas `commentable_type` et `commentable_id`.
+- **Références circulaires** : résolues par des requêtes récursives. Brume accepte chaque ligne une seule fois lors de son parcours, mais sa documentation ne détaille pas ces cas.
+
+Sa documentation signale aussi ses limites :
+
+- Les requêtes générées peuvent être lentes selon le schéma et les index, et elle conseille alors d'indexer les colonnes filtrées ou de lire depuis une réplique.
+- Dans une référence circulaire, un enregistrement qui ne respecte pas la condition est exclu avec ses parents. Un de ses exemples renvoie ainsi un résultat vide.
+- Une composante fortement connexe contenant deux groupes de cycles distincts n'est pas résolue. L'avertissement est daté de la version 0.2b2, et il figure toujours dans la documentation de la 0.2.26.
+
+## Clés primaires et clés étrangères
+
+Les deux outils permettent de déclarer une règle une seule fois, sur la clé.
+
+```yaml
+# Greenmask
+- schema: public
+  name: users
+  transformers:
+    - name: RandomUuid
+      apply_for_references: true
+      params:
+        column: "user_id"
+        engine: "hash"
+```
+
+```yaml
+# Brume
+- table: users
+  columns:
+    - name: user_id
+      strategy: FPE_UUID
+```
+
+**Avec Greenmask**, [`apply_for_references`](https://www.greenmask.io/docs/greenmask/built_in_transformers/transformation_inheritance/) applique la transformation aux colonnes qui référencent la clé, à condition que le transformateur la prenne en charge et que le moteur `hash` soit activé. Seize transformateurs sont listés, dont `Hash`, `RandomInt`, `RandomUuid`, `RandomEmail` et `RandomDate`. La documentation déconseille de combiner cette option avec des conditions `when`, car elles ne sont pas héritées. Elle prévient aussi que [le moteur `hash` ne garantit pas l'unicité](https://www.greenmask.io/docs/greenmask/built_in_transformers/transformation_engines/) des valeurs produites, même si la probabilité de doublon est décrite comme faible pour `Hash`, `RandomEmail` et `RandomUuid`, et que cette garantie est en cours de développement.
+
+**Avec Brume**, la règle suit automatiquement les clés étrangères pour [`FPE_ID`, `FPE_UUID`, `HASH` et `FAKE`](/fr/docs/how-it-works/). `FPE_ID` et `FPE_UUID` sont du chiffrement préservant le format : bijectifs, donc sans collision. En contrepartie, `FPE_ID` ne conserve ni la longueur ni l'ordre des identifiants et refuse les valeurs négatives, et la clé permet de revenir à la valeur d'origine. Les autres stratégies peuvent entrer en collision sur une colonne `UNIQUE` : `brume plan` refuse les cas quasi certains, et une collision restante n'arrête pas l'exécution. [La ligne est perdue et signalée](/fr/docs/strategies/#colonnes-unique-et-collisions), et les lignes qui la référencent restent dans la cible avec une clé étrangère pendante.
+
+Pour les tables partitionnées, Greenmask propose `apply_for_inherited`, qui applique une règle à toutes les partitions. Brume traite une table partitionnée comme une seule table.
+
+## Déterminisme
+
+**Greenmask laisse le choix, transformateur par transformateur.** Le moteur `random` est celui par défaut : la même entrée donne une sortie différente à chaque exécution. Le moteur `hash`, fondé sur SHA-3, rend la sortie reproductible. Sa documentation recommande de définir un sel global secret avec `GREENMASK_GLOBAL_SALT`. Nous n'y avons pas trouvé d'engagement explicite sur la stabilité des valeurs d'une version à l'autre, ce qui ne signifie pas qu'elles changent. Les [notes de la 0.2.26](https://www.greenmask.io/docs/greenmask/release_notes/greenmask_0_2_26/) mentionnent un correctif de reproductibilité pour `RandomPerson`.
+
+**Brume est toujours déterministe.** Chaque stratégie dépend de deux secrets obligatoires, `BRUME_HMAC_SECRET` et `BRUME_FPE_KEY`. La même entrée donne la même sortie à chaque exécution, et [sur toutes les versions d'une même version majeure](/fr/docs/how-it-works/#déterminisme-et-versions). Il n'existe pas de mode aléatoire. Changer les secrets change les valeurs produites.
+
+Le choix de Greenmask a un intérêt réel quand on ne veut pas qu'une valeur soit la même d'une exécution à l'autre. Celui de Brume évite d'oublier le moteur sur une colonne, au prix de cette souplesse.
+
+## Transformations
+
+**Greenmask offre le catalogue le plus large.** Ses [transformateurs standard](https://www.greenmask.io/docs/greenmask/built_in_transformers/standard_transformers/) couvrent noms, adresses, emails, téléphones, cartes bancaires, adresses IP, dates, bruit numérique, listes de valeurs et expressions régulières. S'y ajoutent des outils pour les cas spécifiques :
+
+- [`Json`](https://www.greenmask.io/docs/greenmask/built_in_transformers/advanced_transformers/json/) modifie un document JSON par opérations `set` et `delete`.
+- [`Template` et `TemplateRecord`](https://www.greenmask.io/docs/greenmask/built_in_transformers/advanced_transformers/) appliquent des gabarits Go à une colonne ou à toute la ligne.
+- [`Cmd`](https://www.greenmask.io/docs/greenmask/built_in_transformers/standard_transformers/cmd/) confie la transformation à un programme externe, écrit dans n'importe quel langage.
+- Les [paramètres dynamiques](https://www.greenmask.io/docs/greenmask/built_in_transformers/dynamic_parameters/) lisent une valeur dans une autre colonne, par exemple pour respecter `created_at < updated_at`.
+- Les [conditions `when`](https://www.greenmask.io/docs/greenmask/built_in_transformers/transformation_condition/) n'appliquent une règle qu'à certaines lignes.
+
+**Brume propose un jeu réduit.** Il compte [huit stratégies](/fr/docs/strategies/) combinées à des [types sémantiques](/fr/docs/semantic-types/) : `EMAIL`, `FIRST_NAME`, `LAST_NAME`, `PHONE`, `IBAN`, `ADDRESS`, `IP_ADDRESS`, `DATE` et `JSONB`. `json_paths` cible des chemins dans un document JSONB, `DATE_SHIFT` décale les dates de façon déterministe, et `BRUME_LOCALE` fixe la langue et les formats des valeurs générées (`fr`, par exemple) ; la documentation de Greenmask ne décrit pas ce réglage. Pour des identifiants propres à votre métier, la reconnaissance sur mesure relève de [l'édition Enterprise](/fr/enterprise/). L'édition open source ne documente ni programme externe, ni gabarit, ni condition par ligne.
+
+## Contrôles avant exécution
+
+Les deux outils prennent ce sujet au sérieux, par des voies différentes.
+
+**La commande [`validate`](https://www.greenmask.io/docs/greenmask/commands/validate/) de Greenmask** vérifie la configuration contre le schéma et signale les contraintes qu'une transformation peut violer (clé étrangère, `CHECK`, `NOT NULL`, clé primaire, `UNIQUE`, longueur…). Elle affiche un diff entre valeurs d'origine et transformées sur un échantillon de lignes, et un **diff de schéma** avec le dump précédent, que sa documentation présente comme une protection contre les fuites quand le schéma change. `--strict` fait échouer un pipeline de CI sur tout avertissement non résolu. Comme le diff affiche par défaut de vraies valeurs, la 0.2.26 a ajouté `--diff-mode=summary`, qui n'affiche que des comptages.
+
+**Brume s'appuie sur trois commandes.** [`brume scan`](/fr/docs/cli/#brume-scan) propose un `brume.yml` à partir des noms et types de colonnes, sans lire les données. [`brume plan`](/fr/docs/cli/#brume-plan) compte les lignes, liste les colonnes d'apparence personnelle sans règle et refuse les configurations vouées à l'échec. [`brume dry-run`](/fr/docs/cli/#brume-dry-run) exécute tout le pipeline sans écrire. Après coup, [`brume audit --anonymity`](/fr/docs/k-anonymity/) mesure le k-anonymat de la cible.
+
+Ces approches se complètent plus qu'elles ne se remplacent. Le diff de schéma voit toute nouvelle colonne, quel que soit son nom, mais suppose un dump précédent et ne juge pas de sa sensibilité. La détection par les noms fonctionne dès la première exécution, mais une colonne au nom anodin lui échappe, et elle se trompe parfois dans l'autre sens : `nombre_commandes` contient `nom`. Aucun des deux outils ne décrit de contrôle du contenu des colonnes de texte libre.
+
+## Rafraîchir une base de test
+
+**Avec Greenmask**, le dump reste disponible : on le [restaure](https://www.greenmask.io/docs/greenmask/commands/restore/) autant que nécessaire, en entier ou par table, et on peut ajouter des données à une base existante avec `--inserts`, `--on-conflict-do-nothing` et `--restore-in-order`. Sa documentation mentionne ce rattrapage parmi les usages du sous-ensemble, et une [liste d'exclusion d'erreurs](https://www.greenmask.io/docs/greenmask/configuration/) permet de poursuivre malgré certaines d'entre elles. Elle précise que l'ordre topologique n'est pas garanti en présence de cycles.
+
+**Avec Brume**, `execute` reconstruit la cible à chaque exécution, et le déterminisme fait que les mêmes lignes source redonnent les mêmes valeurs. Le [mode fusion](/fr/roadmap/merge-mode/), qui permettrait d'appliquer un delta et de conserver des données de test ajoutées à la main, est planifié et pas encore disponible.
+
+## Quand Greenmask est le meilleur choix
+
+- Vous voulez un **dump stocké** (répertoire, S3, Azure, SSH), restaurable plusieurs fois, en partie, ou avec `pg_restore`.
+- Vous cherchez aussi un outil pour vos **sauvegardes logiques**.
+- Vous devez traiter **plusieurs schémas** ou toute une base, objets volumineux compris.
+- Vos relations ne sont pas toutes des clés étrangères : **références virtuelles, JSON, polymorphisme**.
+- Vous avez besoin de **logique entre colonnes**, de conditions par ligne ou de **transformations écrites dans votre langage**.
+- Vous voulez **choisir entre aléatoire et déterministe** colonne par colonne.
+- Vous devez **ajouter des données** à une base existante plutôt que la reconstruire.
+- Vous voulez une **image Docker officielle** dès aujourd'hui, ou vous visez aussi MySQL et acceptez une bêta.
+
+## Quand Brume est le meilleur choix
+
+- Vous voulez **une petite base autour de quelques lignes** : rayon borné, parents réduits à ce qui est nécessaire, tables sans lien laissées vides, volumes annoncés par `plan`.
+- Vos **clés primaires** doivent être pseudonymisées avec une garantie d'absence de collision (`FPE_ID`, `FPE_UUID`).
+- Vous voulez que **toutes** les valeurs soient déterministes sans réglage par colonne, et stables au sein d'une version majeure.
+- Vous partez d'un schéma sans configuration : `scan` propose des règles et `plan` liste ce qui n'est pas couvert.
+- Vous voulez écrire **directement dans la cible**, sans gérer de dump intermédiaire.
+- Votre DPO demande une **mesure du k-anonymat** sur le résultat.
+- Vous avez besoin de valeurs **localisées** (`BRUME_LOCALE=fr`), ou votre source tourne encore en **PostgreSQL 12 ou 13**, hors du périmètre testé par Greenmask.
+
+## Ce que cette page n'établit pas
+
+- **Les performances.** Greenmask documente des dumps et restaurations parallèles (`--jobs`) et la compression `pgzip`, Brume un pool de connexions (`BRUME_PARALLELISM`) et une lecture en flux. Nous n'avons pas de mesure commune, et les résultats dépendent du schéma, des index et du volume.
+- **Le comportement sur votre schéma.** Le tableau des sous-ensembles ci-dessus est une lecture de la documentation. Avant de choisir, essayez les deux sur un schéma représentatif : `validate` pour Greenmask, `plan` et `dry-run` pour Brume.
+- **La qualification juridique.** Greenmask parle d'anonymisation, Brume de pseudonymisation. Ces mots décrivent l'intention de chaque outil ; le statut RGPD dépend du résultat obtenu sur vos données. Voir [Pseudonymisation vs anonymisation : ce que dit le RGPD](/fr/guides/pseudonymization-vs-anonymization-gdpr/).
+
+## Peut-on utiliser les deux ?
+
+Oui, mais ils se recoupent davantage que Brume et PostgreSQL Anonymizer, et chacun a son propre fichier de règles à maintenir. Le découpage le plus lisible consiste à confier les dumps complets et leur stockage à Greenmask, et les petites bases ciblées à Brume, sans oublier que leurs valeurs transformées ne correspondront pas d'un outil à l'autre.
+
+## Guides liés
+
+- [Extraire un sous-ensemble de la prod sans casser les clés étrangères](/fr/guides/subset-production-database-foreign-keys/)
+- [Brume vs PostgreSQL Anonymizer](/fr/guides/brume-vs-postgresql-anonymizer/)
+- [Brume vs pganonymize](/fr/guides/brume-vs-pganonymize/)
+- [Pseudonymisation vs anonymisation : ce que dit le RGPD](/fr/guides/pseudonymization-vs-anonymization-gdpr/)
+
+<GuideCta />
