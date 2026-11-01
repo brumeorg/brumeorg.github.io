@@ -1,0 +1,214 @@
+---
+title: Brume vs Greenmask
+description: 'Brume vs Greenmask: targeted copy or logical dump? Subsetting, foreign keys, determinism, pre-flight checks: what their documentation says, and when each fits.'
+---
+
+import GuideCta from '../../../components/GuideCta.astro';
+
+[Greenmask](https://www.greenmask.io/) and Brume have a lot in common: two open-source CLIs under the Apache 2.0 license, driven by a YAML file, that read a PostgreSQL database from the outside and can produce a smaller, transformed copy. Their starting points differ: Greenmask presents itself as a logical dump and restore tool, close to `pg_dump` and `pg_restore`; Brume as a tool for copying a pseudonymized subset. This page describes what each one documents and does not look for an overall winner.
+
+:::note[Sources and limits]
+Statements about Greenmask come from [its official documentation](https://www.greenmask.io/docs/greenmask/) and [its repository](https://github.com/GreenmaskIO/greenmask) (version 0.2.26, checked in November 2026). Statements about Brume come from [this site's docs](/docs/) and its code (version 2.1). We did not run the two tools side by side: this page draws no conclusion about performance, and "not described in its documentation" does not mean "impossible". If something is out of date, [tell us](https://github.com/brumeorg/Brume/issues).
+:::
+
+## At a glance
+
+| | Greenmask | Brume |
+|---|---|---|
+| **Form** | Go CLI, single binary: install script, Homebrew, Docker, source | Native CLI: apt, dnf, Homebrew. Official Docker image [planned](/roadmap/containerization/) |
+| **License** | Apache 2.0 | Apache 2.0 |
+| **Databases** | PostgreSQL; MySQL in beta | PostgreSQL in the open-source edition |
+| **PostgreSQL versions** | 14 to 18 | 12 to 18 |
+| **How it works** | `dump` produces a transformed logical dump, `restore` loads it afterwards | `execute` reads the source and writes directly to the target |
+| **Output** | Directory-format dump, compatible with `pg_restore`, stored in a directory, on S3, Azure or SSH | PostgreSQL database, or a `.sql` file restorable with `psql` |
+| **Default scope** | The whole database, like `pg_dump` | The rows reached from `extraction.tables`, in a single schema (`BRUME_SCHEMA`) |
+| **Subsetting** | SQL conditions per table, propagated to the tables that reference the filtered table | Filters and an `fk_depth` radius in both directions, parents kept by default |
+| **Relations without a foreign key** | Virtual and polymorphic references, including from JSON | The walk follows declared foreign keys |
+| **Determinism** | Chosen per transformer: `random` by default, `hash` to enable; salt recommended | Always: every strategy is deterministic and keyed; two mandatory secrets |
+| **Foreign keys** | `apply_for_references` on the key, with the `hash` engine, for the listed transformers | Automatic for `FPE_ID`, `FPE_UUID`, `HASH` and `FAKE` |
+| **Primary key uniqueness** | The documentation warns that the `hash` engine does not guarantee uniqueness | `FPE_ID` and `FPE_UUID` are bijective, so collision-free |
+| **Transformations** | About fifty transformers, including `Template`, `TemplateRecord`, `Json` and `Cmd` (external program) | Eight strategies, combined with semantic types |
+| **Logic across columns** | Dynamic parameters, `when` conditions | `linked_columns` (same value in several columns); no per-row condition documented |
+| **Pre-flight checks** | `validate`: threatened constraints, data diff, schema diff | `plan`: row counts, uncovered columns, refused configurations; `dry-run` |
+| **Rule suggestions** | Not described in its documentation | `brume scan`, from column names and types |
+| **Residual risk measure** | Not described in its documentation | `brume audit --anonymity` (k-anonymity) |
+| **Adding to an existing target** | `--inserts`, `--on-conflict-do-nothing`, `--restore-in-order` | No: `execute` rebuilds the target; [merge mode](/roadmap/merge-mode/) planned |
+
+## Two different starting points
+
+**Greenmask is built around the logical dump.** Its [architecture page](https://www.greenmask.io/docs/greenmask/architecture/) explains that it handles the data section itself and delegates the schema (`pre-data`, `post-data`) to `pg_dump` and `pg_restore`. Its [`dump`](https://www.greenmask.io/docs/greenmask/commands/dump/) command takes most of `pg_dump`'s options, and its dumps can be restored with `pg_restore`. The result is a stored artifact that you can list, inspect, restore several times or restore in part:
+
+```
+source ──▶ greenmask dump (transforms) ──▶ storage ──▶ greenmask restore ──▶ target
+```
+
+Its documentation also presents it as a tool for everyday backup and restore, which Brume does not claim to be.
+
+**Brume is built around the targeted copy.** It starts from the rows you select, follows foreign keys and writes directly to a target database or a `.sql` file:
+
+```
+source (read-only) ──▶ brume execute (transforms on the fly) ──▶ target database or .sql
+```
+
+**What they share.** In both cases the transformation happens before writing: Greenmask's dump holds the transformed values, and Brume transforms each row before writing it. Both rely on PostgreSQL utilities for the schema: Greenmask asks for utilities of the same major version as the destination server, Brume for a `pg_dump` whose major version is at least the source's. And in both cases, **a column with no rule is copied as it is** ([0.2.25 release notes](https://www.greenmask.io/docs/greenmask/release_notes/greenmask_0_2_25/) for Greenmask, [`KEEP`](/docs/strategies/#keep) for Brume). Checking coverage stays necessary, whichever tool you use.
+
+**What differs in scope.** Greenmask works on the database the way `pg_dump` does: several schemas, selection with `--schema` or `--table`, large objects with `--blobs`. Brume handles one schema per run, set by `BRUME_SCHEMA`, and its documentation does not mention large objects.
+
+## Subsetting
+
+Both tools can produce a smaller database whose constraints hold. They don't reason the same way.
+
+**Greenmask filters by propagation.** You put [`subset_conds`](https://www.greenmask.io/docs/greenmask/database_subset/) on a table, and Greenmask generates queries with joins that filter this table and the tables that reference it, directly or not, with no depth limit. Its documentation spells out the reverse case: a table stays whole if it has no condition and references no filtered table. Columns must be written with their schema and table, to avoid ambiguity.
+
+**Brume starts from rows and counts hops.** You select seed rows with filters. [`fk_depth`](/docs/configuration/#extractionfk_depth) is a radius counted towards parents and children alike, and `orphan_policy: KEEP_PARENTS` (the default) adds the parents that copied rows need, whatever their distance. `brume plan` gives the row count per table before anything is written.
+
+The same need, one customer and what depends on it, is written like this:
+
+```yaml
+# Greenmask
+dump:
+  transformation:
+    - schema: "public"
+      name: "customers"
+      subset_conds:
+        - "public.customers.customer_id IN (1)"
+```
+
+```yaml
+# Brume
+extraction:
+  fk_depth: 2
+  tables:
+    - table: customers
+      filter: "customer_id IN (1)"
+```
+
+On a schema where `order_items` references both `orders` and `products`, these two configurations don't give the same result. This table is deduced from the two documentations, it was not run:
+
+| Table | Greenmask | Brume |
+|---|---|---|
+| `customers` | Customer 1 | Customer 1 |
+| `orders` | Their orders | Their orders |
+| `order_items` | Their items | Their items |
+| `products` (parent of `order_items`, no condition) | The whole table | Only the referenced products |
+| A table with no link to the others | The whole table | No rows |
+
+Neither behavior is wrong, they answer different expectations. With Greenmask, you can put a condition on `products`, but it also reduces the `order_items` that reference it, and you can leave out a table's data with `--exclude-table-data`. With Brume, a useful table with no link has to be added to `extraction.tables`, and descendants beyond `fk_depth` aren't copied until the radius is raised.
+
+Greenmask documents several cases that Brume's documentation doesn't describe:
+
+- **Virtual references**: declaring a relation with no constraint in the database, including from an expression on JSONB. Brume's walk follows declared foreign keys; [`linked_columns`](/docs/configuration/#anonymizationlinked_columns) aligns values across columns, without affecting the walk.
+- **Polymorphic references**: the `commentable_type` and `commentable_id` case.
+- **Circular references**: resolved with recursive queries. Brume accepts each row once during its walk, but its documentation doesn't detail these cases.
+
+Its documentation also states its limits:
+
+- The generated queries can be slow depending on the schema and indexes, and it then advises indexing the filtered columns or reading from a replica.
+- In a circular reference, a record that doesn't meet the condition is excluded along with its parents. One of its examples returns an empty result this way.
+- A strongly connected component holding two distinct groups of cycles isn't resolved. The warning is dated version 0.2b2, and it still appears in the 0.2.26 documentation.
+
+## Primary keys and foreign keys
+
+Both tools let you declare a rule once, on the key.
+
+```yaml
+# Greenmask
+- schema: public
+  name: users
+  transformers:
+    - name: RandomUuid
+      apply_for_references: true
+      params:
+        column: "user_id"
+        engine: "hash"
+```
+
+```yaml
+# Brume
+- table: users
+  columns:
+    - name: user_id
+      strategy: FPE_UUID
+```
+
+**With Greenmask**, [`apply_for_references`](https://www.greenmask.io/docs/greenmask/built_in_transformers/transformation_inheritance/) applies the transformation to the columns that reference the key, provided the transformer supports it and the `hash` engine is enabled. Sixteen transformers are listed, including `Hash`, `RandomInt`, `RandomUuid`, `RandomEmail` and `RandomDate`. The documentation advises against combining this option with `when` conditions, because they aren't inherited. It also warns that [the `hash` engine does not guarantee the uniqueness](https://www.greenmask.io/docs/greenmask/built_in_transformers/transformation_engines/) of the values it produces, even though the probability of a duplicate is described as low for `Hash`, `RandomEmail` and `RandomUuid`, and that this guarantee is under development.
+
+**With Brume**, the rule follows foreign keys automatically for [`FPE_ID`, `FPE_UUID`, `HASH` and `FAKE`](/docs/how-it-works/). `FPE_ID` and `FPE_UUID` are format-preserving encryption: bijective, so collision-free. In return, `FPE_ID` keeps neither the length nor the order of identifiers and refuses negative values, and the key allows going back to the original value. The other strategies can collide on a `UNIQUE` column: `brume plan` refuses the near-certain cases, and a remaining collision doesn't stop the run. [The row is lost and reported](/docs/strategies/#unique-columns-and-collisions), and rows that reference it stay in the target with a dangling foreign key.
+
+For partitioned tables, Greenmask offers `apply_for_inherited`, which applies a rule to all partitions. Brume treats a partitioned table as a single table.
+
+## Determinism
+
+**Greenmask leaves the choice to you, transformer by transformer.** The `random` engine is the default: the same input gives a different output on every run. The `hash` engine, based on SHA-3, makes the output reproducible. Its documentation recommends setting a secret global salt with `GREENMASK_GLOBAL_SALT`. We found no explicit commitment there on values staying stable from one release to the next, which doesn't mean they change. The [0.2.26 release notes](https://www.greenmask.io/docs/greenmask/release_notes/greenmask_0_2_26/) mention a reproducibility fix for `RandomPerson`.
+
+**Brume is always deterministic.** Every strategy depends on two mandatory secrets, `BRUME_HMAC_SECRET` and `BRUME_FPE_KEY`. The same input gives the same output on every run, and [across all releases of a major version](/docs/how-it-works/#determinism-and-versions). There is no random mode. Changing the secrets changes the values produced.
+
+Greenmask's choice has real value when you don't want a value to be the same from one run to the next. Brume's avoids forgetting the engine on a column, at the cost of that flexibility.
+
+## Transformations
+
+**Greenmask offers the broader catalog.** Its [standard transformers](https://www.greenmask.io/docs/greenmask/built_in_transformers/standard_transformers/) cover names, addresses, emails, phone numbers, credit cards, IP addresses, dates, numeric noise, value lists and regular expressions. On top of those come tools for specific cases:
+
+- [`Json`](https://www.greenmask.io/docs/greenmask/built_in_transformers/advanced_transformers/json/) edits a JSON document with `set` and `delete` operations.
+- [`Template` and `TemplateRecord`](https://www.greenmask.io/docs/greenmask/built_in_transformers/advanced_transformers/) apply Go templates to a column or to the whole row.
+- [`Cmd`](https://www.greenmask.io/docs/greenmask/built_in_transformers/standard_transformers/cmd/) hands the transformation to an external program, written in any language.
+- [Dynamic parameters](https://www.greenmask.io/docs/greenmask/built_in_transformers/dynamic_parameters/) read a value from another column, for example to keep `created_at < updated_at`.
+- [`when` conditions](https://www.greenmask.io/docs/greenmask/built_in_transformers/transformation_condition/) apply a rule to certain rows only.
+
+**Brume offers a smaller set.** It has [eight strategies](/docs/strategies/) combined with [semantic types](/docs/semantic-types/): `EMAIL`, `FIRST_NAME`, `LAST_NAME`, `PHONE`, `IBAN`, `ADDRESS`, `IP_ADDRESS`, `DATE` and `JSONB`. `json_paths` targets paths in a JSONB document, `DATE_SHIFT` shifts dates deterministically, and `BRUME_LOCALE` sets the language and formats of generated values (`fr`, for example); Greenmask's documentation doesn't describe this setting. For identifiers specific to your business, custom recognition belongs to [the Enterprise edition](/enterprise/). The open-source edition documents no external program, template or per-row condition.
+
+## Pre-flight checks
+
+Both tools take this seriously, in different ways.
+
+**Greenmask's [`validate`](https://www.greenmask.io/docs/greenmask/commands/validate/) command** checks the configuration against the schema and flags the constraints a transformation may violate (foreign key, `CHECK`, `NOT NULL`, primary key, `UNIQUE`, length…). It shows a diff between original and transformed values on a sample of rows, and a **schema diff** against the previous dump, which its documentation presents as a protection against leaks when the schema changes. `--strict` fails a CI pipeline on any unresolved warning. Since the diff shows real values by default, 0.2.26 added `--diff-mode=summary`, which only shows counts.
+
+**Brume relies on three commands.** [`brume scan`](/docs/cli/#brume-scan) proposes a `brume.yml` from column names and types, without reading the data. [`brume plan`](/docs/cli/#brume-plan) counts rows, lists PII-looking columns with no rule and refuses configurations that can only fail. [`brume dry-run`](/docs/cli/#brume-dry-run) runs the whole pipeline without writing. Afterwards, [`brume audit --anonymity`](/docs/k-anonymity/) measures the k-anonymity of the target.
+
+These approaches complement each other more than they replace each other. The schema diff sees any new column, whatever its name, but needs a previous dump and doesn't judge its sensitivity. Name-based detection works from the first run, but a column with an innocuous name escapes it, and it sometimes errs the other way: `nombre_commandes` contains `nom`. Neither tool describes a check of what free-text columns contain.
+
+## Refreshing a test database
+
+**With Greenmask**, the dump stays available: you [restore](https://www.greenmask.io/docs/greenmask/commands/restore/) it as often as needed, in full or by table, and you can add data to an existing database with `--inserts`, `--on-conflict-do-nothing` and `--restore-in-order`. Its documentation lists this catch-up among the uses of subsetting, and an [error exclusion list](https://www.greenmask.io/docs/greenmask/configuration/) lets it continue past some of them. It specifies that topological order isn't guaranteed when there are cycles.
+
+**With Brume**, `execute` rebuilds the target on every run, and determinism means the same source rows give the same values again. [Merge mode](/roadmap/merge-mode/), which would apply a delta and keep test data added by hand, is planned and not available yet.
+
+## When Greenmask is the better choice
+
+- You want a **stored dump** (directory, S3, Azure, SSH), restorable several times, in part, or with `pg_restore`.
+- You are also looking for a tool for your **logical backups**.
+- You need to handle **several schemas** or a whole database, large objects included.
+- Not all your relations are foreign keys: **virtual references, JSON, polymorphism**.
+- You need **logic across columns**, per-row conditions or **transformations written in your own language**.
+- You want to **choose between random and deterministic** column by column.
+- You need to **add data** to an existing database rather than rebuild it.
+- You want an **official Docker image** today, or you are also targeting MySQL and accept a beta.
+
+## When Brume is the better choice
+
+- You want **a small database around a few rows**: bounded radius, parents reduced to what is needed, unrelated tables left empty, row counts announced by `plan`.
+- Your **primary keys** need pseudonymizing with a guarantee of no collision (`FPE_ID`, `FPE_UUID`).
+- You want **every** value to be deterministic with no per-column setting, and stable within a major version.
+- You start from a schema with no configuration: `scan` proposes rules and `plan` lists what isn't covered.
+- You want to write **directly to the target**, without managing an intermediate dump.
+- Your DPO asks for a **k-anonymity measure** on the result.
+- You need **localized** values (`BRUME_LOCALE=fr`), or your source still runs **PostgreSQL 12 or 13**, outside the range Greenmask tests.
+
+## What this page does not establish
+
+- **Performance.** Greenmask documents parallel dumps and restores (`--jobs`) and `pgzip` compression, Brume a connection pool (`BRUME_PARALLELISM`) and streaming reads. We have no common measurement, and results depend on the schema, indexes and volume.
+- **Behavior on your schema.** The subsetting table above is a reading of the documentation. Before choosing, try both on a representative schema: `validate` for Greenmask, `plan` and `dry-run` for Brume.
+- **Legal status.** Greenmask talks about anonymization, Brume about pseudonymization. These words describe each tool's intent; the GDPR status depends on the result you get on your data. See [Pseudonymization vs anonymization: what the GDPR says](/guides/pseudonymization-vs-anonymization-gdpr/).
+
+## Can you use both?
+
+Yes, but they overlap more than Brume and PostgreSQL Anonymizer do, and each has its own rule file to maintain. The clearest split is to leave full dumps and their storage to Greenmask, and small targeted databases to Brume, bearing in mind that their transformed values won't match from one tool to the other.
+
+## Related guides
+
+- [Subset a production database without breaking foreign keys](/guides/subset-production-database-foreign-keys/)
+- [Brume vs PostgreSQL Anonymizer](/guides/brume-vs-postgresql-anonymizer/)
+- [Brume vs pganonymize](/guides/brume-vs-pganonymize/)
+- [Pseudonymization vs anonymization: what the GDPR says](/guides/pseudonymization-vs-anonymization-gdpr/)
+
+<GuideCta />
