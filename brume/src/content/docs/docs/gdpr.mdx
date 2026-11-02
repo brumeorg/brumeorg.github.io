@@ -3,6 +3,10 @@ title: GDPR & compliance
 description: Brume's legal position, GDPR articles it implements or supports, and the DPO sign-off checklist.
 ---
 
+import { Content as ChecklistDpo } from '../../../partials/checklist-dpo.en.md';
+import CtaBlock from '../../../components/CtaBlock.astro';
+import CtaLine from '../../../components/CtaLine.astro';
+
 This page is the canonical reference to share with your **DPO**, **legal counsel**, or **security team** before any production rollout.
 
 ## Legal position
@@ -37,18 +41,7 @@ Be honest about the boundary, your DPO will appreciate it:
 
 ## DPO checklist
 
-Before running Brume on production data:
-
-- **Secrets** are stored in your secret manager (Vault, SOPS, AWS Secrets Manager, GitHub Encrypted Secrets…), not in plaintext on disk or in git.
-- **Source** is accessed with a read-only account.
-- **`brume.yml`** is in version control and has gone through code review.
-- **`brume plan`** has been run and its list of uncovered PII columns has been reviewed.
-- **`brume dry-run`** completes with zero errors.
-- **`brume audit --anonymity`** has been run on the resulting dataset — see [k-Anonymity audit](/docs/k-anonymity/).
-- **Recipients** of the pseudonymized dataset are limited to the strict minimum (dev, QA, demo).
-- **The dataset is not labelled "anonymous"** in any internal documentation or external communication.
-- **A retention period** is set on the pseudonymized copy.
-- **Logs** from the run are archived (use `--json` to ingest them in your SIEM).
+<ChecklistDpo />
 
 ## Recommended practices
 
@@ -66,3 +59,10 @@ Suggested wording (adapt to your situation):
 
 - [**k-Anonymity audit**](/docs/k-anonymity/) — measure residual re-identification risk.
 - [**Operations & troubleshooting**](/docs/operations/) — secret management, logging, access control.
+
+<CtaBlock variant="dpo" page="docs-gdpr" intent="dpoQuestion" lang="en"
+  title="A question about your situation?"
+  text="Print the checklist for your records, or spend 20 minutes with the founder on your case."
+  primaryLabel="Printable checklist" />
+
+<CtaLine line="enterpriseDocs" page="docs-gdpr" lang="en" />

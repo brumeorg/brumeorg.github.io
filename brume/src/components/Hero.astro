@@ -4,12 +4,27 @@
  * visual headline but is no longer the <h1>: the page's keyword title
  * (`hero.title`) is rendered as the real <h1> just below it, for SEO.
  * Only `hero.image.html` is supported — the only image form the site uses.
+ *
+ * Additions: `heroNote` (frontmatter) prints a small line under the buttons,
+ * and an action with `attrs: { data-mail-intent, data-mail-page }` gets its
+ * mailto link (subject + body) from src/i18n/cta.ts.
  */
 import { LinkButton } from '@astrojs/starlight/components';
+import { mailto, type MailIntent } from '../i18n/cta';
 
-const { data } = Astro.locals.starlightRoute.entry;
+const { entry, lang } = Astro.locals.starlightRoute;
+const { data } = entry;
 const { title = data.title, tagline, image, actions = [] } = data.hero || {};
 const rawHtml = image && 'html' in image ? image.html : undefined;
+const heroNote = (data as { heroNote?: string }).heroNote;
+
+const resolveLink = (link: string, attrs: Record<string, unknown>) => {
+	const { 'data-mail-intent': intent, 'data-mail-page': page, ...rest } = attrs;
+	const href = intent
+		? mailto(lang === 'fr' ? 'fr' : 'en', intent as MailIntent, String(page))
+		: link;
+	return { href, rest };
+};
 ---
 
 <div class="hero">
@@ -27,17 +42,19 @@ const rawHtml = image && 'html' in image ? image.html : undefined;
 		{
 			actions.length > 0 && (
 				<div class="sl-flex actions">
-					{actions.map(
-						({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
-							<LinkButton {href} {variant} icon={icon?.name} class:list={[className]} {...attrs}>
+					{actions.map(({ attrs: { class: className, ...attrs } = {}, icon, link, text, variant }) => {
+						const { href, rest } = resolveLink(link, attrs);
+						return (
+							<LinkButton {href} {variant} icon={icon?.name} class:list={[className]} {...rest}>
 								{text}
 								{icon?.html && <Fragment set:html={icon.html} />}
 							</LinkButton>
-						)
-					)}
+						);
+					})}
 				</div>
 			)
 		}
+		{heroNote && <p class="hero-note" set:html={heroNote} />}
 	</div>
 </div>
 
@@ -97,6 +114,12 @@ const rawHtml = image && 'html' in image ? image.html : undefined;
 			gap: 1rem 2rem;
 			flex-wrap: wrap;
 			justify-content: center;
+		}
+
+		.hero-note {
+			margin: calc(-0.5 * clamp(1.5rem, calc(1.5rem + 1vw), 2rem)) 0 0;
+			font-size: var(--sl-text-sm);
+			color: var(--brume-muted-text);
 		}
 
 		@media (min-width: 50rem) {

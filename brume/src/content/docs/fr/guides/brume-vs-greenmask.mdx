@@ -3,7 +3,7 @@ title: Brume vs Greenmask
 description: 'Brume vs Greenmask : copie ciblée ou dump logique ? Sous-ensembles, clés étrangères, déterminisme, contrôles : ce que disent leurs documentations.'
 ---
 
-import GuideCta from '../../../../components/GuideCta.astro';
+import CtaBlock from '../../../../components/CtaBlock.astro';
 
 [Greenmask](https://www.greenmask.io/) et Brume ont beaucoup en commun : deux CLI open source sous licence Apache 2.0, pilotées par un fichier YAML, qui lisent une base PostgreSQL de l'extérieur et peuvent produire une copie réduite et transformée. Leurs points de départ diffèrent : Greenmask se présente comme un outil de dump et de restauration logiques, proche de `pg_dump` et `pg_restore` ; Brume comme un outil de copie d'un sous-ensemble pseudonymisé. Cette page décrit ce que chacun documente et ne cherche pas de vainqueur général.
 
@@ -211,4 +211,4 @@ Oui, mais ils se recoupent davantage que Brume et PostgreSQL Anonymizer, et chac
 - [Brume vs pganonymize](/fr/guides/brume-vs-pganonymize/)
 - [Pseudonymisation vs anonymisation : ce que dit le RGPD](/fr/guides/pseudonymization-vs-anonymization-gdpr/)
 
-<GuideCta />
+<CtaBlock variant="compare" page="vs-greenmask" tool="Greenmask" lang="fr" />

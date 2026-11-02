@@ -83,3 +83,9 @@ Vous devriez voir la liste des sous-commandes disponibles (`init`, `scan`, `plan
 Écrivez maintenant votre première configuration et exécutez une pseudonymisation de bout en bout.
 
 → [**Votre première pseudonymisation**](/fr/docs/first-pseudonymization/)
+
+:::tip[Ça a fonctionné ?]
+- [Mettre une étoile sur GitHub](https://github.com/brumeorg/Brume)
+- [Signaler un problème sur GitHub](https://github.com/brumeorg/Brume/issues)
+- [Déployer pour plusieurs équipes, avec support : offre Enterprise](/fr/enterprise/)
+:::

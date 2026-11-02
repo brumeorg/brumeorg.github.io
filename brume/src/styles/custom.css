@@ -1,4 +1,117 @@
-@import url('https://fonts.googleapis.com/css2?family=Asap+Condensed:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@300;400;500&display=swap');
+/* Self-hosted fonts (SIL Open Font License), latin + latin-ext subsets:
+   no request leaves brume.software. */
+@font-face {
+	font-family: 'Asap Condensed';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/asap-condensed-400-latin-ext.woff2') format('woff2');
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+	font-family: 'Asap Condensed';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/asap-condensed-400-latin.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: 'Asap Condensed';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/asap-condensed-500-latin-ext.woff2') format('woff2');
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+	font-family: 'Asap Condensed';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/asap-condensed-500-latin.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: 'Asap Condensed';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/fonts/asap-condensed-600-latin-ext.woff2') format('woff2');
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+	font-family: 'Asap Condensed';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/fonts/asap-condensed-600-latin.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: 'Asap Condensed';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('/fonts/asap-condensed-700-latin-ext.woff2') format('woff2');
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+	font-family: 'Asap Condensed';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('/fonts/asap-condensed-700-latin.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: 'Be Vietnam Pro';
+	font-style: normal;
+	font-weight: 300;
+	font-display: swap;
+	src: url('/fonts/be-vietnam-pro-300-latin-ext.woff2') format('woff2');
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+	font-family: 'Be Vietnam Pro';
+	font-style: normal;
+	font-weight: 300;
+	font-display: swap;
+	src: url('/fonts/be-vietnam-pro-300-latin.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: 'Be Vietnam Pro';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/be-vietnam-pro-400-latin-ext.woff2') format('woff2');
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+	font-family: 'Be Vietnam Pro';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/be-vietnam-pro-400-latin.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: 'Be Vietnam Pro';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/be-vietnam-pro-500-latin-ext.woff2') format('woff2');
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+	font-family: 'Be Vietnam Pro';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/be-vietnam-pro-500-latin.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 :root {
 	--brume-sage:           #8eb085;
@@ -612,11 +725,6 @@ main > .content-panel:first-of-type:has(.hero)::after {
 	gap: 0.75rem;
 }
 
-.brume-cta-top {
-	margin-top: 2.5rem;
-	margin-bottom: 1rem;
-}
-
 .brume-cta-bottom {
 	margin-top: 2.5rem;
 	padding-bottom: 1rem;
@@ -693,6 +801,34 @@ main > .content-panel:first-of-type:has(.hero)::after {
 .brume-btn-secondary:hover {
 	border-color: var(--brume-sage);
 	color: var(--brume-sage);
+}
+
+.brume-btn-secondary:focus-visible {
+	outline: 2px solid var(--brume-sage-text);
+	outline-offset: 3px;
+}
+
+/* "Who is it for?" cards on the landing page */
+.brume-audience {
+	width: 100%;
+	max-width: 1200px;
+	margin: 3rem auto 0;
+}
+
+.brume-audience h2 {
+	margin-bottom: 1.25rem;
+	font-family: 'Asap Condensed', sans-serif;
+	font-weight: 500;
+	text-align: center;
+}
+
+.brume-audience .card .body p + p {
+	margin-top: 0.5rem;
+}
+
+.brume-audience .card .body a {
+	color: var(--brume-sage-text);
+	font-weight: 500;
 }
 
 .brume-features {
@@ -918,9 +1054,6 @@ main > .content-panel:first-of-type:has(.hero)::after {
 	}
 
 	/* CTA principal légèrement plus compact */
-	.brume-cta-top {
-		margin-top: 1.5rem;
-	}
 	.brume-btn-primary {
 		padding: 0.7rem 1.4rem;
 		font-size: 0.95rem;
@@ -1085,6 +1218,16 @@ body:has(.hero) .hero:not(:has(.hero-html)) {
 	color: #14181d;
 }
 
+.hero .actions .sl-link-button.secondary:hover {
+	border-color: var(--brume-sage);
+	color: var(--brume-sage-text);
+}
+
+.hero .actions .sl-link-button:focus-visible {
+	outline: 2px solid var(--brume-sage-text);
+	outline-offset: 3px;
+}
+
 /* ----- Editions table ----- */
 .brume-editions {
 	width: 100%;
@@ -1213,6 +1356,10 @@ body:has(.hero) .hero:not(:has(.hero-html)) {
 .brume-enterprise-plan .brume-btn {
 	align-self: flex-start;
 	margin-top: auto;
+}
+
+.brume-enterprise-plan .brume-form-note {
+	text-align: start;
 }
 
 /* ----- FAQ ----- */
@@ -1798,3 +1945,47 @@ a.brume-roadmap-item-title:hover { color: var(--brume-sage); }
 	border-bottom: 1px solid var(--brume-sage-tint);
 }
 .brume-roadmap-note a:hover { border-bottom-color: var(--brume-sage); }
+
+/* ============================================================
+   Printable DPO checklist (/checklist-dpo/, /fr/checklist-dpo/)
+   ============================================================ */
+.brume-checklist-print-hint {
+	font-size: var(--sl-text-sm);
+	color: var(--brume-muted-text);
+}
+
+@media print {
+	body:has(.brume-checklist) {
+		background: #fff;
+		color: #000;
+	}
+
+	body:has(.brume-checklist) header,
+	body:has(.brume-checklist) footer,
+	body:has(.brume-checklist) .sl-skip-link,
+	body:has(.brume-checklist) .brume-checklist-print-hint,
+	body:has(.brume-checklist) .brume-cta-line,
+	body:has(.brume-checklist) .brume-cta-line-note {
+		display: none !important;
+	}
+
+	body:has(.brume-checklist) .main-frame {
+		padding-top: 0;
+	}
+
+	body:has(.brume-checklist) h1,
+	body:has(.brume-checklist) .sl-markdown-content,
+	body:has(.brume-checklist) .sl-markdown-content :is(strong, code, a) {
+		color: #000;
+	}
+
+	.brume-checklist ul {
+		padding-inline-start: 1.5rem;
+	}
+
+	.brume-checklist li {
+		list-style: '☐  ';
+		margin-top: 0.6rem;
+		break-inside: avoid;
+	}
+}

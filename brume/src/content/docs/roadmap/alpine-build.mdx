@@ -5,7 +5,10 @@ roadmap:
   group: Packaging
   status: Planned
   order: 1
+  # issue: {{À CONFIRMER : URL de l'issue GitHub où voter}} — active le bouton « Voter pour ce chantier »
 ---
+
+import CtaBlock from '../../../components/CtaBlock.astro';
 
 **Status:** Planned · **Priority:** 3
 
@@ -29,3 +32,5 @@ Produce a Brume binary and container image built on **Alpine Linux** (musl libc)
 
 - Native-image (GraalVM) vs. JLink-based runtime trimming.
 - Whether `pg_dump` (required for schema replication) stays a runtime dependency or gets bundled.
+
+<CtaBlock variant="roadmap" page="roadmap" lang="en" />

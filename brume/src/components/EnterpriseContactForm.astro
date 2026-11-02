@@ -1,18 +1,20 @@
 ---
+import { CONTACT_EMAIL, mailSubject } from '../i18n/cta';
+
 const t = Astro.locals.t;
-const recipient = 'frederik@brume.software';
+const recipient = CONTACT_EMAIL;
+const subject = mailSubject(Astro.locals.starlightRoute.lang === 'fr' ? 'fr' : 'en', 'contact', 'enterprise-form');
 const otherDatabases = ['SQL Server', 'MySQL-MariaDB', 'Oracle', t('enterprise.form.otherDatabasesOther')];
 ---
 
 <form
 	class="brume-form"
 	id="brume-enterprise-form"
-	action={`mailto:${recipient}`}
+	action={`mailto:${recipient}?subject=${encodeURIComponent(subject)}`}
 	method="post"
 	enctype="text/plain"
 	data-recipient={recipient}
-	data-subject-prefix={t('enterprise.form.subjectPrefix')}
-	data-subject-fallback={t('enterprise.form.subjectFallback')}
+	data-subject={subject}
 	data-label-name={t('enterprise.form.labelName')}
 	data-label-email={t('enterprise.form.labelEmail')}
 	data-label-company={t('enterprise.form.labelCompany')}
@@ -93,7 +95,7 @@ const otherDatabases = ['SQL Server', 'MySQL-MariaDB', 'Oracle', t('enterprise.f
 		<p class="brume-form-note">{t('enterprise.form.privacy')}</p>
 		<p class="brume-form-note">
 			{t('enterprise.form.note')}
-			<a href={`mailto:${recipient}`}>{recipient}</a>{t('enterprise.form.noteOr')}
+			<a href={`mailto:${recipient}?subject=${encodeURIComponent(subject)}`}>{recipient}</a>{t('enterprise.form.noteOr')}
 		</p>
 	</div>
 </form>
@@ -106,11 +108,9 @@ const otherDatabases = ['SQL Server', 'MySQL-MariaDB', 'Oracle', t('enterprise.f
 			e.preventDefault();
 			var data = new FormData(form);
 			var to = form.getAttribute('data-recipient');
-			var subjectPrefix = form.getAttribute('data-subject-prefix') || 'Brume Enterprise — ';
-			var subjectFallback = form.getAttribute('data-subject-fallback') || 'inquiry';
+			var subject = form.getAttribute('data-subject');
 			var sentVia = form.getAttribute('data-sent-via') || '';
 			var company = (data.get('company') || '').toString().trim();
-			var subject = subjectPrefix + (company || subjectFallback);
 			var line = function (label, value) {
 				return form.getAttribute('data-label-' + label) + ' ' + (value || '—');
 			};

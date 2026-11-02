@@ -3,7 +3,7 @@ title: Brume vs Greenmask
 description: 'Brume vs Greenmask: targeted copy or logical dump? Subsetting, foreign keys, determinism, pre-flight checks: what their documentation says, and when each fits.'
 ---
 
-import GuideCta from '../../../components/GuideCta.astro';
+import CtaBlock from '../../../components/CtaBlock.astro';
 
 [Greenmask](https://www.greenmask.io/) and Brume have a lot in common: two open-source CLIs under the Apache 2.0 license, driven by a YAML file, that read a PostgreSQL database from the outside and can produce a smaller, transformed copy. Their starting points differ: Greenmask presents itself as a logical dump and restore tool, close to `pg_dump` and `pg_restore`; Brume as a tool for copying a pseudonymized subset. This page describes what each one documents and does not look for an overall winner.
 
@@ -211,4 +211,4 @@ Yes, but they overlap more than Brume and PostgreSQL Anonymizer do, and each has
 - [Brume vs pganonymize](/guides/brume-vs-pganonymize/)
 - [Pseudonymization vs anonymization: what the GDPR says](/guides/pseudonymization-vs-anonymization-gdpr/)
 
-<GuideCta />
+<CtaBlock variant="compare" page="vs-greenmask" tool="Greenmask" lang="en" />

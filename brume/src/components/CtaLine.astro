@@ -1,0 +1,39 @@
+---
+/**
+ * One-line call (a sentence and a link) for pages that must stay sober.
+ * Texts and targets come from src/i18n/cta.ts; mail links get the usual note.
+ */
+import { ctaLineTargets, ctaTexts, mailto, paths, type CtaLineKey, type Lang } from '../i18n/cta';
+
+interface Props {
+	line: CtaLineKey;
+	/** Short page id, written in the mail subject (e.g. `docs-kanon`). */
+	page: string;
+	lang?: Lang;
+}
+
+const { line, page } = Astro.props;
+const lang: Lang = Astro.props.lang ?? (Astro.locals.starlightRoute.lang === 'fr' ? 'fr' : 'en');
+const t = ctaTexts[lang];
+const { lead, label } = t.lines[line];
+const target = ctaLineTargets[line];
+const href = target.mail ? mailto(lang, target.mail, page) : paths(lang)[target.path!];
+const noteId = `cta-line-${line}-${page}-note`;
+---
+
+<p class="brume-cta-line">
+	{lead}
+	<a href={href} aria-describedby={target.mail ? noteId : undefined}>{label}</a>
+</p>
+{target.mail && <p class="brume-cta-line-note" id={noteId}>{t.mailNote}</p>}
+
+<style>
+	.brume-cta-line a {
+		font-weight: 500;
+	}
+	.brume-cta-line-note {
+		margin-top: 0.25rem;
+		font-size: var(--sl-text-xs);
+		color: var(--brume-muted-text);
+	}
+</style>

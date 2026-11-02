@@ -6,7 +6,7 @@ head:
     content: Sous-ensemble PostgreSQL sans casser les FK | Brume
 ---
 
-import GuideCta from '../../../../components/GuideCta.astro';
+import CtaBlock from '../../../../components/CtaBlock.astro';
 
 Une copie complète de la production est rarement ce dont un développeur a besoin. Elle est lente à restaurer, coûteuse à stocker, et contient bien plus de données personnelles qu'aucun test ou session de debug n'en exige — ce que le RGPD encadre explicitement avec le principe de **minimisation des données** (art. 5(1)(c)).
 
@@ -30,6 +30,10 @@ Les clés étrangères tirent dans **deux directions** :
 - **Vers les enfants** — une `order` sans ses `order_items` est valide pour PostgreSQL mais inutile pour tester la page de paiement.
 
 Un bon sous-ensemble suit les deux directions, et s'arrête quelque part.
+
+:::tip
+Essayez sur votre schéma : `brume scan` propose les règles à partir de vos colonnes. [Installer Brume](/fr/docs/getting-started/)
+:::
 
 ## Un rayon autour de lignes de départ
 
@@ -149,4 +153,5 @@ WHERE p.id IS NULL;
 - [Copier la prod en staging en conformité RGPD](/fr/guides/copy-production-to-staging-gdpr/)
 - [Référence `brume.yml` — `extraction`](/fr/docs/configuration/#extraction)
 
-<GuideCta />
+<CtaBlock variant="dev" page="guide-subset" lang="fr" />
+<CtaBlock variant="dpo" page="guide-subset" lang="fr" />

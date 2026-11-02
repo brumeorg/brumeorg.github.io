@@ -3,7 +3,8 @@ title: Copy production data to staging safely (GDPR)
 description: Refresh a PostgreSQL staging database from production without copying real identities — pipeline, CI job and what the GDPR still requires.
 ---
 
-import GuideCta from '../../../components/GuideCta.astro';
+import CtaBlock from '../../../components/CtaBlock.astro';
+import CtaLine from '../../../components/CtaLine.astro';
 
 Staging is only useful if it looks like production. The quickest way to get there — restoring last night's backup — also copies every customer's name, email and address into an environment that more people can reach, with weaker controls and longer-lived copies.
 
@@ -16,6 +17,10 @@ This guide sets up a staging refresh where **real values never land in staging**
 - **But pseudonymization is the measure the GDPR names.** It is cited as an appropriate safeguard when assessing a new purpose (Art. 6(4)(e)), as a security measure (Art. 32(1)(a)), and as a way to implement data protection by design (Art. 25(1)).
 
 In practice: if synthetic fixtures are enough, use them. When staging needs production realism — volumes, distributions, edge cases, bug reproduction — a **pseudonymized, minimized** copy, treated as personal data and validated with your DPO, is the defensible middle ground. More on the legal side in [Pseudonymization vs anonymization](/guides/pseudonymization-vs-anonymization-gdpr/).
+
+:::tip
+A 10-point checklist to frame these copies with your DPO: [read the DPO checklist](/checklist-dpo/).
+:::
 
 ## The pipeline
 
@@ -105,4 +110,7 @@ The full [DPO checklist](/docs/gdpr/#dpo-checklist) is the page to share before 
 - [Subsetting a production database without breaking foreign keys](/guides/subset-production-database-foreign-keys/)
 - [Pseudonymization vs anonymization: what the GDPR says](/guides/pseudonymization-vs-anonymization-gdpr/)
 
-<GuideCta />
+<CtaBlock variant="dpo" page="guide-staging" lang="en" />
+<CtaBlock variant="dev" page="guide-staging" lang="en" />
+
+<CtaLine line="enterpriseRefresh" page="guide-staging" lang="en" />

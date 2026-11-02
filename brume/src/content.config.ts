@@ -7,11 +7,15 @@ export const collections = {
 		loader: docsLoader(),
 		schema: docsSchema({
 			extend: z.object({
+				// Small line under the hero buttons (see src/components/Hero.astro).
+				heroNote: z.string().optional(),
 				roadmap: z
 					.object({
 						group: z.enum(['Packaging', 'Engine']),
 						status: z.enum(['Planned', 'Exploration']),
 						order: z.number().default(0),
+						// GitHub issue where visitors vote with a 👍 (see src/components/CtaBlock.astro).
+						issue: z.string().url().optional(),
 					})
 					.optional(),
 			}),
@@ -49,8 +53,6 @@ export const collections = {
 				'enterprise.form.privacy': z.string().optional(),
 				'enterprise.form.note': z.string().optional(),
 				'enterprise.form.noteOr': z.string().optional(),
-				'enterprise.form.subjectPrefix': z.string().optional(),
-				'enterprise.form.subjectFallback': z.string().optional(),
 				'enterprise.form.labelName': z.string().optional(),
 				'enterprise.form.labelEmail': z.string().optional(),
 				'enterprise.form.labelCompany': z.string().optional(),
@@ -66,10 +68,6 @@ export const collections = {
 				'install.label.debian': z.string().optional(),
 				'install.label.rhel': z.string().optional(),
 				'install.label.macos': z.string().optional(),
-				'guides.cta.title': z.string().optional(),
-				'guides.cta.lead': z.string().optional(),
-				'guides.cta.quickstart': z.string().optional(),
-				'guides.cta.enterprise': z.string().optional(),
 			}),
 		}),
 	}),

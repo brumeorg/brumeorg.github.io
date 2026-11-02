@@ -1,0 +1,226 @@
+---
+/**
+ * Call-to-action box: a short title, one sentence, a primary and an optional
+ * secondary button. Texts, links and mail subjects come from src/i18n/cta.ts;
+ * no script, no tracker — mailto subjects carry the intent and the page id.
+ */
+import { LinkButton } from '@astrojs/starlight/components';
+import {
+	GITHUB_URL,
+	RELEASES_FEED_URL,
+	ctaTexts,
+	mailto,
+	paths,
+	type Lang,
+	type MailIntent,
+} from '../i18n/cta';
+
+type Variant = 'dev' | 'dpo' | 'compare' | 'enterprise' | 'follow' | 'roadmap';
+
+interface Props {
+	variant: Variant;
+	/** Short page id, written in the mail subject (e.g. `guide-staging`). */
+	page: string;
+	lang?: Lang;
+	title?: string;
+	text?: string;
+	primaryLabel?: string;
+	/** dpo: mail intent of the secondary button (default `dpoCall`). */
+	intent?: MailIntent;
+	/** compare: the other tool, named in the mail subject. */
+	tool?: string;
+	/** roadmap: item name and GitHub issue; both default to the page frontmatter. */
+	topic?: string;
+	issue?: string;
+}
+
+interface Action {
+	label: string;
+	href: string;
+	external?: boolean;
+	mail?: boolean;
+}
+
+const route = Astro.locals.starlightRoute;
+const { variant, page, intent = 'dpoCall', tool = '' } = Astro.props;
+const lang: Lang = Astro.props.lang ?? (route.lang === 'fr' ? 'fr' : 'en');
+const t = ctaTexts[lang];
+const p = paths(lang);
+
+let title: string;
+let text: string;
+let primary: Action;
+let secondary: Action | undefined;
+let note = t.mailNote;
+
+switch (variant) {
+	case 'dev':
+		({ title, text } = t.dev);
+		primary = { label: t.dev.primary, href: p.gettingStarted };
+		secondary = { label: t.dev.secondary, href: GITHUB_URL, external: true };
+		break;
+	case 'dpo':
+		({ title, text } = t.dpo);
+		primary = { label: t.dpo.primary, href: p.checklist };
+		secondary = { label: t.dpo.secondary, href: mailto(lang, intent, page), mail: true };
+		break;
+	case 'compare':
+		({ title, text } = t.compare);
+		primary = { label: t.compare.primary, href: p.gettingStarted };
+		secondary = { label: t.compare.secondary, href: mailto(lang, 'migration', page, { tool }), mail: true };
+		break;
+	case 'enterprise':
+		({ title, text } = t.enterprise);
+		primary = { label: t.enterprise.primary, href: p.enterprise };
+		secondary = { label: t.enterprise.secondary, href: p.partners };
+		break;
+	case 'follow':
+		({ title, text } = t.follow);
+		primary = { label: t.follow.primary, href: GITHUB_URL, external: true };
+		secondary = { label: t.follow.secondary, href: RELEASES_FEED_URL, external: true };
+		break;
+	case 'roadmap': {
+		const roadmap = (route.entry.data as { roadmap?: { issue?: string } }).roadmap;
+		const issue = Astro.props.issue ?? roadmap?.issue;
+		const topic = Astro.props.topic ?? route.entry.data.title;
+		const notify: Action = { label: t.roadmap.notify, href: mailto(lang, 'notify', page, { topic }), mail: true };
+		title = t.roadmap.title;
+		note = t.notifyNote;
+		// Without an issue to vote on, the mail becomes the primary call.
+		if (issue) {
+			text = t.roadmap.textWithIssue;
+			primary = { label: t.roadmap.vote, href: issue, external: true };
+			secondary = notify;
+		} else {
+			text = t.roadmap.text;
+			primary = notify;
+			secondary = { label: t.roadmap.feed, href: RELEASES_FEED_URL, external: true };
+		}
+		break;
+	}
+}
+
+title = Astro.props.title ?? title;
+text = Astro.props.text ?? text;
+primary.label = Astro.props.primaryLabel ?? primary.label;
+
+const id = `cta-${variant}-${page}`;
+const hasMail = primary.mail || secondary?.mail;
+const iconFor = (action: Action) => (action.mail ? 'email' : action.external ? 'external' : 'right-arrow');
+---
+
+<aside class="brume-cta-block not-content" aria-labelledby={`${id}-title`}>
+	<p class="brume-cta-block-title" id={`${id}-title`}>{title}</p>
+	<p class="brume-cta-block-text" set:html={text} />
+	<div class="brume-cta-block-actions">
+		{
+			[primary, secondary].map(
+				(action, index) =>
+					action && (
+						<LinkButton
+							href={action.href}
+							variant={index === 0 ? 'primary' : 'secondary'}
+							icon={iconFor(action)}
+							iconPlacement={action.mail ? 'start' : 'end'}
+							aria-describedby={action.mail ? `${id}-note` : undefined}
+						>
+							{action.label}
+							{action.external && <span class="sr-only">{t.externalSite}</span>}
+						</LinkButton>
+					)
+			)
+		}
+	</div>
+	{hasMail && <p class="brume-cta-block-note" id={`${id}-note`}>{note}</p>}
+</aside>
+
+<style>
+	.brume-cta-block {
+		margin-block: 3rem 0;
+		max-width: 50rem;
+		padding: 1.5rem;
+		border: 1px solid var(--brume-hairline);
+		border-radius: 1rem;
+		background: var(--brume-sage-tint-soft);
+	}
+	.brume-cta-block + .brume-cta-block {
+		margin-top: 1rem;
+	}
+	/* Centered on the landing page, aligned with the text everywhere else. */
+	:global(body:has(.hero)) .brume-cta-block {
+		margin-inline: auto;
+	}
+	.brume-cta-block-title {
+		margin: 0;
+		font-family: 'Asap Condensed', sans-serif;
+		font-size: var(--sl-text-2xl);
+		font-weight: 500;
+		line-height: 1.2;
+		color: var(--sl-color-white);
+	}
+	.brume-cta-block-text {
+		margin: 0.5rem 0 1.25rem;
+		max-width: 60ch;
+		color: var(--brume-muted-text);
+	}
+	.brume-cta-block-text :global(code) {
+		font-size: 0.9em;
+		padding: 0.05em 0.35em;
+		border-radius: 4px;
+		background: var(--brume-sage-tint);
+		color: var(--brume-sage-text);
+	}
+	.brume-cta-block-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+	.brume-cta-block-actions :global(.sl-link-button) {
+		font-size: var(--sl-text-sm);
+		font-weight: 500;
+		padding: 0.6rem 1.25rem;
+		transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+	}
+	.brume-cta-block-actions :global(.sl-link-button svg) {
+		width: 1.1em;
+		height: 1.1em;
+	}
+	.brume-cta-block-actions :global(.sl-link-button.primary) {
+		background: var(--brume-sage);
+		border-color: var(--brume-sage);
+		color: #14181d;
+	}
+	.brume-cta-block-actions :global(.sl-link-button.primary:hover) {
+		background: var(--brume-sage-soft);
+		border-color: var(--brume-sage-soft);
+	}
+	.brume-cta-block-actions :global(.sl-link-button.secondary) {
+		border-color: var(--sl-color-gray-4);
+		color: var(--sl-color-white);
+	}
+	.brume-cta-block-actions :global(.sl-link-button.secondary:hover) {
+		border-color: var(--brume-sage);
+		color: var(--brume-sage-text);
+	}
+	.brume-cta-block-actions :global(.sl-link-button:focus-visible) {
+		outline: 2px solid var(--brume-sage-text);
+		outline-offset: 3px;
+	}
+	.brume-cta-block-note {
+		margin: 0.75rem 0 0;
+		font-size: var(--sl-text-xs);
+		color: var(--brume-muted-text);
+	}
+	@media (max-width: 40rem) {
+		.brume-cta-block {
+			padding: 1.25rem 1rem;
+		}
+		.brume-cta-block-actions {
+			flex-direction: column;
+		}
+		.brume-cta-block-actions :global(.sl-link-button) {
+			justify-content: center;
+			text-align: center;
+		}
+	}
+</style>

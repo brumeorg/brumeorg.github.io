@@ -1,9 +1,15 @@
 ---
-const { subject, fields = [] } = Astro.props;
-const encode = (value: string) => encodeURIComponent(value).replace(/'/g, '%27');
-// RFC 6068: line breaks in a mailto body must be CRLF.
-const body = fields.map((field: string) => `${field} `).join('\r\n');
-const href = `mailto:frederik@brume.software?subject=${encode(subject)}&body=${encode(body)}`;
+import { mailto, type Lang, type MailIntent } from '../i18n/cta';
+
+interface Props {
+	intent: MailIntent;
+	/** Short page id, written in the mail subject (e.g. `enterprise`). */
+	page: string;
+	lang?: Lang;
+}
+
+const { intent, page } = Astro.props;
+const lang: Lang = Astro.props.lang ?? (Astro.locals.starlightRoute.lang === 'fr' ? 'fr' : 'en');
 ---
 
-<a class="brume-btn brume-btn-primary" href={href}><slot /></a>
+<a class="brume-btn brume-btn-primary" href={mailto(lang, intent, page)}><slot /></a>
