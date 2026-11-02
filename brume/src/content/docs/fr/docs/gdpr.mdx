@@ -3,6 +3,10 @@ title: RGPD & conformité
 description: La position juridique de Brume, les articles RGPD qu'il implémente ou supporte, et la checklist de validation DPO.
 ---
 
+import { Content as ChecklistDpo } from '../../../../partials/checklist-dpo.fr.md';
+import CtaBlock from '../../../../components/CtaBlock.astro';
+import CtaLine from '../../../../components/CtaLine.astro';
+
 Cette page est la référence canonique à partager avec votre **DPO**, votre **conseil juridique** ou votre **équipe sécurité** avant tout déploiement en production.
 
 ## Position juridique
@@ -37,18 +41,7 @@ Soyez honnête sur la limite, votre DPO l'appréciera :
 
 ## Checklist DPO
 
-Avant d'exécuter Brume sur des données de production :
-
-- Les **secrets** sont stockés dans votre gestionnaire de secrets (Vault, SOPS, AWS Secrets Manager, GitHub Encrypted Secrets…), pas en clair sur disque ou dans git.
-- La **source** est accédée avec un compte en lecture seule.
-- Le **`brume.yml`** est sous gestion de version et a fait l'objet d'une revue de code.
-- **`brume plan`** a été exécuté et sa liste de colonnes PII non couvertes a été revue.
-- **`brume dry-run`** se termine sans erreur.
-- **`brume audit --anonymity`** a été exécuté sur le dataset résultant — voir [Audit k-anonymat](/fr/docs/k-anonymity/).
-- Les **destinataires** du dataset pseudonymisé sont limités au strict minimum (dev, QA, démo).
-- **Le dataset n'est pas qualifié d'« anonyme »** dans aucune documentation interne ou communication externe.
-- **Une durée de conservation** est fixée sur la copie pseudonymisée.
-- Les **logs** de l'exécution sont archivés (utilisez `--json` pour les ingérer dans votre SIEM).
+<ChecklistDpo />
 
 ## Pratiques recommandées
 
@@ -66,3 +59,10 @@ Formulation suggérée (adaptez à votre situation) :
 
 - [**Audit k-anonymat**](/fr/docs/k-anonymity/) — mesurer le risque résiduel de ré-identification.
 - [**Exploitation & dépannage**](/fr/docs/operations/) — gestion des secrets, logging, contrôle d'accès.
+
+<CtaBlock variant="dpo" page="docs-gdpr" intent="dpoQuestion" lang="fr"
+  title="Une question sur votre situation ?"
+  text="Imprimez la checklist pour votre dossier, ou échangez 20 minutes avec le fondateur sur votre cas."
+  primaryLabel="Version imprimable de la checklist" />
+
+<CtaLine line="enterpriseDocs" page="docs-gdpr" lang="fr" />

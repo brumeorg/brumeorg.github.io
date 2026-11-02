@@ -3,7 +3,7 @@ title: Brume vs pganonymize pour anonymiser PostgreSQL
 description: 'Brume vs pganonymize : réécriture sur place ou copie avec transformation ? Déterminisme, clés étrangères, sous-ensembles, et quand choisir lequel.'
 ---
 
-import GuideCta from '../../../../components/GuideCta.astro';
+import CtaBlock from '../../../../components/CtaBlock.astro';
 
 [pganonymize](https://github.com/rheinwerk-verlag/pganonymize) et Brume sont deux outils en ligne de commande pilotés par un fichier YAML, tous deux destinés à sortir les données personnelles des bases PostgreSQL. Sous la surface, ils fonctionnent très différemment, et chacun convient à des situations différentes — cette page essaie de dire lesquelles, honnêtement.
 
@@ -83,4 +83,4 @@ Brume sélectionne **les lignes à copier** : des lignes de départ issues de fi
 - [Brume vs Greenmask](/fr/guides/brume-vs-greenmask/)
 - [Copier la prod en staging en conformité RGPD](/fr/guides/copy-production-to-staging-gdpr/)
 
-<GuideCta />
+<CtaBlock variant="compare" page="vs-pganonymize" tool="pganonymize" lang="fr" />

@@ -3,7 +3,8 @@ title: Copier la prod en staging en conformité RGPD
 description: Rafraîchir une base PostgreSQL de staging depuis la production sans copier d'identités réelles — pipeline, job CI et ce que le RGPD exige encore.
 ---
 
-import GuideCta from '../../../../components/GuideCta.astro';
+import CtaBlock from '../../../../components/CtaBlock.astro';
+import CtaLine from '../../../../components/CtaLine.astro';
 
 Un staging n'est utile que s'il ressemble à la production. Le chemin le plus court — restaurer la sauvegarde de la nuit — copie aussi le nom, l'email et l'adresse de chaque client dans un environnement accessible à plus de monde, moins protégé, et dont les copies vivent plus longtemps.
 
@@ -16,6 +17,10 @@ Ce guide met en place un rafraîchissement de staging où **les vraies valeurs n
 - **Mais la pseudonymisation est la mesure que le RGPD cite.** Elle figure parmi les garanties appropriées pour évaluer une nouvelle finalité (art. 6(4)(e)), parmi les mesures de sécurité (art. 32(1)(a)) et comme moyen de protection des données dès la conception (art. 25(1)).
 
 En pratique : si des fixtures synthétiques suffisent, utilisez-les. Quand le staging a besoin du réalisme de la production — volumes, distributions, cas limites, reproduction de bugs — une copie **pseudonymisée et minimisée**, traitée comme une donnée personnelle et validée avec votre DPO, est le compromis défendable. Le volet juridique est détaillé dans [Pseudonymisation vs anonymisation](/fr/guides/pseudonymization-vs-anonymization-gdpr/).
+
+:::tip
+Une checklist en 10 points pour cadrer ces copies avec votre DPO : [lire la checklist DPO](/fr/checklist-dpo/).
+:::
 
 ## Le pipeline
 
@@ -105,4 +110,7 @@ La [checklist DPO](/fr/docs/gdpr/#checklist-dpo) complète est la page à partag
 - [Extraire un sous-ensemble de la prod sans casser les clés étrangères](/fr/guides/subset-production-database-foreign-keys/)
 - [Pseudonymisation vs anonymisation : ce que dit le RGPD](/fr/guides/pseudonymization-vs-anonymization-gdpr/)
 
-<GuideCta />
+<CtaBlock variant="dpo" page="guide-staging" lang="fr" />
+<CtaBlock variant="dev" page="guide-staging" lang="fr" />
+
+<CtaLine line="enterpriseRefresh" page="guide-staging" lang="fr" />

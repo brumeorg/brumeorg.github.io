@@ -83,3 +83,9 @@ You should see the list of available subcommands (`init`, `scan`, `plan`, `dry-r
 Now write your first configuration and run a pseudonymization end-to-end.
 
 → [**Your first pseudonymization**](/docs/first-pseudonymization/)
+
+:::tip[Did it work?]
+- [Star the project on GitHub](https://github.com/brumeorg/Brume)
+- [Report a problem on GitHub](https://github.com/brumeorg/Brume/issues)
+- [Roll out to several teams, with support: Enterprise offer](/enterprise/)
+:::

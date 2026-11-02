@@ -6,7 +6,7 @@ head:
     content: Subset a PostgreSQL database without breaking FKs | Brume
 ---
 
-import GuideCta from '../../../components/GuideCta.astro';
+import CtaBlock from '../../../components/CtaBlock.astro';
 
 A full copy of production is rarely what a developer needs. It's slow to restore, expensive to store, and it carries far more personal data than any test or debug session requires — the GDPR calls that out explicitly with the **data minimization** principle (Art. 5(1)(c)).
 
@@ -30,6 +30,10 @@ Foreign keys pull in **two directions**:
 - **Towards children** — an `order` without its `order_items` is valid for PostgreSQL but useless for a test of the checkout page.
 
 A good subset follows both, and stops somewhere.
+
+:::tip
+Try it on your schema: `brume scan` drafts the rules from your columns. [Install Brume](/docs/getting-started/)
+:::
 
 ## A radius around seed rows
 
@@ -149,4 +153,5 @@ WHERE p.id IS NULL;
 - [Copy production data to staging safely (GDPR)](/guides/copy-production-to-staging-gdpr/)
 - [`brume.yml` reference — `extraction`](/docs/configuration/#extraction)
 
-<GuideCta />
+<CtaBlock variant="dev" page="guide-subset" lang="en" />
+<CtaBlock variant="dpo" page="guide-subset" lang="en" />

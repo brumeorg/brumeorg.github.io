@@ -29,8 +29,6 @@
 	"enterprise.form.privacy": "Les informations saisies servent uniquement à répondre à votre demande.",
 	"enterprise.form.note": "Le bouton ouvre un email pré-rempli dans votre messagerie. Ou écrivez-nous directement à",
 	"enterprise.form.noteOr": ".",
-	"enterprise.form.subjectPrefix": "Brume Enterprise — ",
-	"enterprise.form.subjectFallback": "demande",
 	"enterprise.form.labelName": "Nom :",
 	"enterprise.form.labelEmail": "Email :",
 	"enterprise.form.labelCompany": "Entreprise :",
@@ -45,9 +43,5 @@
 	"roadmap.status.exploration": "Exploration",
 	"install.label.debian": "debian/ubuntu",
 	"install.label.rhel": "rhel/fedora",
-	"install.label.macos": "macos",
-	"guides.cta.title": "Essayez Brume sur votre propre schéma",
-	"guides.cta.lead": "Installez la CLI, écrivez un brume.yml et obtenez une copie pseudonymisée et cohérente de vos données PostgreSQL. Besoin d’un SLA, du SSO ou de types de PII sur mesure ? Parlons Enterprise.",
-	"guides.cta.quickstart": "Démarrage rapide",
-	"guides.cta.enterprise": "Brume Enterprise"
+	"install.label.macos": "macos"
 }

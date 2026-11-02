@@ -15,12 +15,16 @@ hero:
   title: 'Brume <span class="hero-accent">Enterprise</span>'
   tagline: 'Des copies PostgreSQL réalistes pour vos développeurs, et la preuve pour votre DPO.'
   actions:
-    - text: Nous contacter par mail
-      link: 'mailto:frederik@brume.software?subject=Brume%20Enterprise%20-%20demande%20de%20contact'
+    - text: Demander un appel de 20 min par mail
+      link: 'mailto:frederik@brume.software'
       variant: primary
+      attrs:
+        data-mail-intent: call
+        data-mail-page: enterprise-hero
     - text: Comparer les éditions
       link: '#editions'
       variant: secondary
+heroNote: 'Le bouton « Demander un appel » ouvre votre messagerie. Votre adresse sert uniquement à vous répondre.'
 ---
 
 import EditionsTable from '../../../components/EditionsTable.astro';
@@ -101,7 +105,8 @@ export const editionRows = [
         <li>SSO, contrôle d'accès par rôle, provisionnement SCIM.</li>
         <li>Journal d'audit.</li>
       </ul>
-      <a class="brume-btn brume-btn-primary" href="mailto:frederik@brume.software?subject=Brume%20Enterprise%20-%20demande%20de%20contact">Nous contacter par mail</a>
+      <MailtoButton intent="quote" page="enterprise-tarifs" lang="fr">Demander un devis par mail</MailtoButton>
+      <p class="brume-form-note">Ouvre votre messagerie. Votre adresse sert uniquement à vous répondre.</p>
     </div>
   </div>
 </section>
@@ -125,8 +130,8 @@ export const editionRows = [
   </div>
   <div class="brume-enterprise-actions">
     <p class="brume-enterprise-mention">5 places disponibles.</p>
-    <MailtoButton subject="Programme partenaires de lancement" fields={['Entreprise :', 'Secteur :', 'Nombre de bases PostgreSQL en production :', 'Besoin principal :']}>Candidater</MailtoButton>
-    <p class="brume-form-note">Ces informations servent uniquement à étudier votre candidature.</p>
+    <MailtoButton intent="partner" page="enterprise" lang="fr">Candidater par mail</MailtoButton>
+    <p class="brume-form-note">Ouvre votre messagerie. Votre adresse et vos réponses servent uniquement à étudier votre candidature.</p>
   </div>
 </section>
 
@@ -134,8 +139,8 @@ export const editionRows = [
   <h2 class="brume-enterprise-title">Brume prend aussi en charge SQL Server</h2>
   <p class="brume-enterprise-lead">Les mêmes garanties (résultats reproductibles, clés étrangères préservées, extraction ciblée) pour vos bases SQL Server. Disponible dans l'offre Grands comptes.</p>
   <div class="brume-enterprise-actions">
-    <MailtoButton subject="Brume Enterprise - SQL Server" fields={['Entreprise :', 'Version de SQL Server :', 'Taille approximative des bases :', 'Échéance souhaitée :']}>Nous contacter pour SQL Server</MailtoButton>
-    <p class="brume-form-note">Ces informations servent à répondre à votre demande.</p>
+    <MailtoButton intent="sqlServer" page="enterprise" lang="fr">Nous écrire pour SQL Server</MailtoButton>
+    <p class="brume-form-note">Ouvre votre messagerie. Votre adresse sert uniquement à vous répondre.</p>
   </div>
 </section>
 

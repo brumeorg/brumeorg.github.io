@@ -9,6 +9,7 @@ Besoin d'aide ? Trouvé un bug ? Envie de discuter d'un cas d'usage avant d'ouvr
 
 - **[Projet sur GitHub](/fr/support/github/)** — issues, discussions et code source.
 - **[Parler à l'équipe](/fr/support/team/)** — contacts personnels des mainteneurs.
+- **[Besoin d'un engagement de délai ?](/fr/enterprise/)** — support prioritaire avec SLA dans l'édition Enterprise.
 
 ## Repères rapides
 

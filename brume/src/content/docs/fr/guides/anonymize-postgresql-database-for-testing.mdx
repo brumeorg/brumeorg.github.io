@@ -6,7 +6,7 @@ head:
     content: Anonymiser une base PostgreSQL pour les tests | Brume
 ---
 
-import GuideCta from '../../../../components/GuideCta.astro';
+import CtaBlock from '../../../../components/CtaBlock.astro';
 
 Des tests sur des données réalistes trouvent les bugs que les fixtures écrites à la main ratent : encodages exotiques, volumes déséquilibrés, cas limites auxquels personne n'avait pensé. Mais une copie brute de la production place les données personnelles de tous vos clients dans un environnement plus ouvert et moins protégé.
 
@@ -25,6 +25,10 @@ users ◀── orders ◀── order_items ──▶ products
 ```
 
 L'objectif : une base de test contenant les commandes passées depuis le 1er janvier 2025, les utilisateurs qui les ont passées, leurs lignes de commande et les produits référencés — noms, emails, téléphones, adresses et texte libre pseudonymisés, et `users.id` / `orders.id` chiffrés de façon cohérente partout où ils apparaissent.
+
+:::tip
+Essayez sur votre schéma : `brume scan` propose les règles à partir de vos colonnes. [Installer Brume](/fr/docs/getting-started/)
+:::
 
 ## Prérequis
 
@@ -261,4 +265,5 @@ gunzip -c ./out/shop_test.sql.gz | psql -h localhost -U app -d shop_test
 - [Copier la prod en staging en conformité RGPD](/fr/guides/copy-production-to-staging-gdpr/) — le même pipeline, automatisé.
 - [Pseudonymisation vs anonymisation : ce que dit le RGPD](/fr/guides/pseudonymization-vs-anonymization-gdpr/)
 
-<GuideCta />
+<CtaBlock variant="dev" page="guide-anonymize" lang="fr" />
+<CtaBlock variant="dpo" page="guide-anonymize" lang="fr" />

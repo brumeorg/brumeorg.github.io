@@ -3,7 +3,7 @@ title: How to anonymize a PostgreSQL database for testing
 description: Turn a production PostgreSQL database into a pseudonymized, FK-coherent test database with Brume — full brume.yml, commands and expected result.
 ---
 
-import GuideCta from '../../../components/GuideCta.astro';
+import CtaBlock from '../../../components/CtaBlock.astro';
 
 Tests run against realistic data catch bugs that hand-written fixtures miss: odd encodings, skewed volumes, edge cases nobody thought of. But a raw copy of production puts every customer's personal data in an environment with wider access and weaker controls.
 
@@ -22,6 +22,10 @@ users ◀── orders ◀── order_items ──▶ products
 ```
 
 The goal: a test database holding the orders placed since 1 January 2025, the users who placed them, their items and the products those items reference — with names, emails, phones, addresses and free text pseudonymized, and `users.id` / `orders.id` encrypted consistently everywhere they appear.
+
+:::tip
+Try it on your schema: `brume scan` drafts the rules from your columns. [Install Brume](/docs/getting-started/)
+:::
 
 ## Prerequisites
 
@@ -258,4 +262,5 @@ gunzip -c ./out/shop_test.sql.gz | psql -h localhost -U app -d shop_test
 - [Copy production data to staging safely (GDPR)](/guides/copy-production-to-staging-gdpr/) — the same pipeline, automated.
 - [Pseudonymization vs anonymization: what the GDPR says](/guides/pseudonymization-vs-anonymization-gdpr/)
 
-<GuideCta />
+<CtaBlock variant="dev" page="guide-anonymize" lang="en" />
+<CtaBlock variant="dpo" page="guide-anonymize" lang="en" />

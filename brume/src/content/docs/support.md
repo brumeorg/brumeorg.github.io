@@ -9,6 +9,7 @@ Need help? Found a bug? Want to discuss a use case before opening an issue? Here
 
 - **[Project on GitHub](/support/github/)** — issues, discussions, and source code.
 - **[Talk to the team](/support/team/)** — personal contacts of the maintainers.
+- **[Need a response-time commitment?](/enterprise/)** — priority support with an SLA in the Enterprise edition.
 
 ## Quick pointers
 

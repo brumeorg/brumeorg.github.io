@@ -3,6 +3,8 @@ title: k-Anonymity audit
 description: Measure the residual re-identification risk on a pseudonymized dataset, and produce a DPO-ready report.
 ---
 
+import CtaLine from '../../../components/CtaLine.astro';
+
 Pseudonymization replaces direct identifiers (name, email, ID). But a row can still be re-identifiable through a **combination of indirect attributes** — birth date + ZIP code + gender, for instance. The `brume audit --anonymity` subcommand measures that residual risk.
 
 ## What is k-anonymity?
@@ -89,3 +91,5 @@ Use this to keep staging refreshes within an acceptable risk envelope.
 
 - [**GDPR & compliance**](/docs/gdpr/) — overall sign-off checklist.
 - [**Strategies**](/docs/strategies/) — adjust per-column transformations to raise `k`.
+
+<CtaLine line="kanon" page="docs-kanon" lang="en" />

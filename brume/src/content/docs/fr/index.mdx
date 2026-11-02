@@ -6,10 +6,13 @@ hero:
   title: 'Pseudonymisation PostgreSQL qui préserve vos clés étrangères'
   tagline: 'Des copies déterministes et cohérentes de vos données de production. Pour le debug, les tests, les démos — partout sauf en production.'
   actions:
-    - text: Comment ça marche
+    - text: Commencer avec Brume
       link: /fr/docs/getting-started/
       icon: right-arrow
-      variant: minimal
+      variant: primary
+    - text: Vous êtes DPO ou RSSI ?
+      link: /fr/docs/gdpr/
+      variant: secondary
   image:
     html: |
       <div class="brume-terminal" aria-label="Instructions d'installation de Brume">
@@ -55,8 +58,11 @@ hero:
           </div>
         </div>
       </div>
+heroNote: 'Open source (Apache 2.0) · PostgreSQL 12 à 18 · Lecture seule sur la base source'
 ---
 
+import { Card, CardGrid } from '@astrojs/starlight/components';
+import CtaBlock from '../../../components/CtaBlock.astro';
 import CliTypewriter from '../../../components/CliTypewriter.astro';
 import InstallTerminal from '../../../components/InstallTerminal.astro';
 import TerminalAlignPill from '../../../components/TerminalAlignPill.astro';
@@ -64,18 +70,6 @@ import TerminalAlignPill from '../../../components/TerminalAlignPill.astro';
 <CliTypewriter />
 <InstallTerminal />
 <TerminalAlignPill />
-
-<div class="brume-cta brume-cta-top">
-  <div class="brume-bracketed brume-bracketed-inline">
-    <span class="brume-corner brume-corner-tl" aria-hidden="true"></span>
-    <span class="brume-corner brume-corner-tr" aria-hidden="true"></span>
-    <span class="brume-corner brume-corner-bl" aria-hidden="true"></span>
-    <span class="brume-corner brume-corner-br" aria-hidden="true"></span>
-    <a class="brume-btn brume-btn-primary" href="/fr/docs/getting-started/">
-      Commencer avec Brume
-    </a>
-  </div>
-</div>
 
 <ul class="brume-features">
   <li class="brume-feature">
@@ -142,7 +136,25 @@ import TerminalAlignPill from '../../../components/TerminalAlignPill.astro';
   </li>
 </ul>
 
+<section class="brume-audience" aria-labelledby="pour-qui">
+  <h2 id="pour-qui">Pour qui ?</h2>
+  <CardGrid>
+    <Card title="Équipes techniques" icon="laptop">
+      <p>Une copie de la production pour le debug, les tests et les démos, avec des clés étrangères qui restent valides.</p>
+      <p>Les règles vivent dans un <code>brume.yml</code> versionné, relu comme du code.</p>
+      <p><a href="/fr/docs/getting-started/">Démarrage rapide</a></p>
+    </Card>
+    <Card title="DPO et RSSI" icon="document">
+      <p>Noms, emails et IBAN remplacés à la volée, avant toute écriture dans la copie de recette.</p>
+      <p>La pseudonymisation est une mesure citée par le RGPD (articles 25 et 32).</p>
+      <p><a href="/fr/checklist-dpo/">Checklist DPO</a></p>
+    </Card>
+  </CardGrid>
+</section>
+
 <div class="brume-cta brume-cta-bottom">
   <p class="brume-cta-tease">…et bien plus encore.</p>
   <a class="brume-btn brume-btn-secondary" href="/fr/docs/">Découvrir les fonctionnalités de Brume</a>
 </div>
+
+<CtaBlock variant="follow" page="home" lang="fr" />

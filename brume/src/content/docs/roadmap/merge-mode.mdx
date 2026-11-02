@@ -5,7 +5,10 @@ roadmap:
   group: Engine
   status: Planned
   order: 1
+  # issue: {{À CONFIRMER : URL de l'issue GitHub où voter}} — active le bouton « Voter pour ce chantier »
 ---
+
+import CtaBlock from '../../../components/CtaBlock.astro';
 
 **Status:** Planned · **Priority:** 5
 
@@ -32,3 +35,5 @@ The current `execute` mode rebuilds the target from scratch. This is the right b
 - Conflict resolution: source-wins vs. target-wins vs. skip-and-log.
 - Detection of deleted rows on the source — soft delete vs. hard delete.
 - Handling of FK consistency during the merge transaction.
+
+<CtaBlock variant="roadmap" page="roadmap" lang="en" />

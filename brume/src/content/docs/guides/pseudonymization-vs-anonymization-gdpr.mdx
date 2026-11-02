@@ -6,7 +6,7 @@ head:
     content: Pseudonymization vs anonymization under the GDPR | Brume
 ---
 
-import GuideCta from '../../../components/GuideCta.astro';
+import CtaBlock from '../../../components/CtaBlock.astro';
 
 In engineering teams, "anonymize the database" usually means "replace the names and the emails". Legally, that is almost always **pseudonymization** — and the difference is not academic: anonymous data falls outside the GDPR, pseudonymized data stays fully inside it.
 
@@ -74,6 +74,10 @@ Replacing names and emails doesn't meet those three criteria, least of all in a 
 
 The practical conclusion: a database copy that keeps its structure and its joins is a **pseudonymization**. Treating it as anonymous is the mistake to avoid.
 
+:::tip
+A 10-point checklist to frame these copies with your DPO: [read the DPO checklist](/checklist-dpo/).
+:::
+
 ## Recent case law and guidance
 
 - **CJEU, 4 September 2025, EDPS v SRB ([C-413/23 P](https://curia.europa.eu/juris/liste.jsf?num=C-413/23)).** The Court held that pseudonymized data is not personal data in every case and for every person: for a recipient with no means reasonably likely to re-identify people, it may not be. For the controller that holds the additional information, however, it remains personal data. If you pseudonymize your own databases with your own keys, that's you.
@@ -124,4 +128,5 @@ The [GDPR & compliance](/docs/gdpr/) page details the legal position, the articl
 - [How to anonymize a PostgreSQL database for testing](/guides/anonymize-postgresql-database-for-testing/)
 - [Subsetting a production database without breaking foreign keys](/guides/subset-production-database-foreign-keys/)
 
-<GuideCta />
+<CtaBlock variant="dpo" page="guide-pseudo" lang="en" />
+<CtaBlock variant="dev" page="guide-pseudo" lang="en" />

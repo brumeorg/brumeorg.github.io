@@ -6,7 +6,7 @@ head:
     content: Pseudonymisation vs anonymisation selon le RGPD | Brume
 ---
 
-import GuideCta from '../../../../components/GuideCta.astro';
+import CtaBlock from '../../../../components/CtaBlock.astro';
 
 Dans les équipes techniques, « anonymiser la base » veut souvent dire « remplacer les noms et les emails ». Juridiquement, c'est presque toujours une **pseudonymisation** — et la différence n'a rien de théorique : des données anonymes sortent du RGPD, des données pseudonymisées y restent entièrement.
 
@@ -74,6 +74,10 @@ Remplacer les noms et les emails ne suffit pas à satisfaire ces trois critères
 
 Conclusion pratique : une copie de base qui conserve sa structure et ses jointures est une **pseudonymisation**. La traiter comme anonyme est l'erreur à éviter.
 
+:::tip
+Une checklist en 10 points pour cadrer ces copies avec votre DPO : [lire la checklist DPO](/fr/checklist-dpo/).
+:::
+
 ## Jurisprudence et lignes directrices récentes
 
 - **CJUE, 4 septembre 2025, CEPD c/ CRU ([C-413/23 P](https://curia.europa.eu/juris/liste.jsf?num=C-413/23)).** La Cour a jugé que des données pseudonymisées ne sont pas des données personnelles en toute hypothèse et pour toute personne : pour un destinataire qui n'a raisonnablement aucun moyen de ré-identifier les personnes, elles peuvent ne pas l'être. Pour le responsable du traitement qui détient les informations supplémentaires, en revanche, elles restent des données personnelles. Si vous pseudonymisez vos propres bases avec vos propres clés, c'est votre cas.
@@ -128,4 +132,5 @@ La page [RGPD & conformité](/fr/docs/gdpr/) détaille la position juridique, le
 - [Comment anonymiser une base PostgreSQL pour les tests](/fr/guides/anonymize-postgresql-database-for-testing/)
 - [Extraire un sous-ensemble de la prod sans casser les clés étrangères](/fr/guides/subset-production-database-foreign-keys/)
 
-<GuideCta />
+<CtaBlock variant="dpo" page="guide-pseudo" lang="fr" />
+<CtaBlock variant="dev" page="guide-pseudo" lang="fr" />

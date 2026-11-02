@@ -4,6 +4,7 @@ description: Nouvelles fonctionnalités et améliorations prévues pour Brume, g
 ---
 
 import RoadmapTimeline from '../../../components/RoadmapTimeline.astro';
+import CtaLine from '../../../components/CtaLine.astro';
 
 <RoadmapTimeline>
 	Ce qui arrive ensuite dans Brume, groupé par thème. Chaque item renvoie vers une page avec la justification et ce qu'il permettra.
@@ -11,5 +12,6 @@ import RoadmapTimeline from '../../../components/RoadmapTimeline.astro';
 	<Fragment slot="note">
 		<p>Cette page reflète la <strong>Roadmap publique, orientée utilisateur</strong>. Le suivi au niveau ticket vit dans le dépôt d'ingénierie ; la roadmap business est suivie séparément.</p>
 		<p>Une demande de fonctionnalité ou un vote sur les priorités ? Ouvrez une issue sur <a href="https://github.com/brumeorg/Brume/issues">GitHub</a> ou venez discuter sur <a href="/fr/support/">Support</a>.</p>
+		<CtaLine line="otherDb" page="roadmap" lang="fr" />
 	</Fragment>
 </RoadmapTimeline>
