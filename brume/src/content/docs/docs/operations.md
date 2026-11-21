@@ -60,17 +60,34 @@ Brume 2.0 changes some pseudonymized values compared with 1.x — fake phone num
 
 Brume 2.1 changes no pseudonymized value: upgrading from 2.0 needs no new run. `FAKE` now follows foreign keys without a `linked_columns` entry — existing entries keep working.
 
+Brume 2.2 and 2.3 change no pseudonymized value either. 2.2 changes two exit codes — update the scripts that test them (see [Exit codes](/docs/cli/#exit-codes)):
+
+- An unknown option or argument, and any error before the subcommand starts, now exits with `1` instead of `2`. `2` only means a connection error, which a script can retry.
+- A run stopped by `SIGTERM` (`docker stop`, a pod shutdown, a cancelled CI job) exits with `143`. `Ctrl-C` still exits with `130`.
+
+2.2 also refuses to start when a required variable is missing — see [`.env.brume` variables](/docs/env/). 2.3 only changes the Linux binary, which now starts on RHEL 8 and other glibc 2.28 systems, and makes `brume --version` print the right number (the 2.2 binary printed `2.1`).
+
 ### Read-only source account
 
 See [`.env.brume` reference](/docs/env/#creating-a-read-only-account-on-the-source) for the SQL grants.
 
 ## PostgreSQL compatibility
 
-Brume supports **PostgreSQL 12, 13, 14, 15, 16, 17 and 18** on both source and target.
+Brume supports **PostgreSQL 12, 13, 14, 15, 16, 17 and 18** on both source and target. Since 2.2, every change to Brume runs its test suite against each of these seven versions, and the native binary is tested end to end against each of them.
 
-The `pg_dump` binary used by Brume (for schema replication) must be on `PATH` and **its major version must be greater than or equal to the source's**. If your source is Postgres 17, install `postgresql-client-17` or newer.
+The `pg_dump` binary used by Brume (for schema replication) must be on `PATH` and **its major version must be greater than or equal to the source's**. **`pg_dump` 18 is recommended**: one client reads every supported source.
 
 `brume execute` checks both before copying anything, and stops with `PREFLIGHT_PG_DUMP_NOT_FOUND` or `PREFLIGHT_PG_DUMP_VERSION_MISMATCH` — see [Preflight checks](/docs/cli/#preflight-checks).
+
+### Loading a dump on another version
+
+Since 2.2, the schema in a `.sql` dump loads on an older server and with an older `psql`. Brume leaves out what they reject — the `\restrict` / `\unrestrict` lines of recent `pg_dump` releases and `SET transaction_timeout` (`pg_dump` 17+) — and quotes every identifier.
+
+Loading into a target **older than the source** remains best-effort: a feature the target doesn't know (e.g. `UNIQUE NULLS NOT DISTINCT`, PostgreSQL 15+) fails whatever the client.
+
+:::caution
+Without `\restrict`, `psql` would run a meta-command slipped into the source schema. Only load a dump that comes from a source you trust.
+:::
 
 ## Logging
 
@@ -94,6 +111,16 @@ brume execute --json 2> logs.jsonl
 
 Each line is a JSON object with `timestamp`, `level`, `event`, `table`, and contextual fields.
 
+## Stopping a run
+
+`Ctrl-C` (`SIGINT`) or `SIGTERM` — `docker stop`, a pod shutdown, a cancelled CI job — cancels the running queries and `pg_dump`, then gives Brume up to 8 seconds to close the target connection or the dump file, within the 10-second grace period of `docker stop`. The run ends with `[RUN_CANCELLED]` and exit code `130` (`SIGINT`) or `143` (`SIGTERM`).
+
+The target is left incomplete: run `brume execute` again. A compressed dump is closed properly — it decompresses without error — but stops where the run stopped.
+
+:::note[Changed in 2.2]
+Before 2.2, the native binary stopped on `SIGTERM` without cancelling anything or printing a message, and could leave a truncated compressed dump.
+:::
+
 ## Common errors
 
 ### `Connection refused`
@@ -106,7 +133,35 @@ The source or target is unreachable. The error code tells which one: `CONNECTION
 
 ### `PREFLIGHT_PG_DUMP_VERSION_MISMATCH`
 
-The `pg_dump` on `PATH` is older than the source server. `brume execute` checks this before copying anything. Install a `postgresql-client-NN` package whose major version is at least the source's.
+The `pg_dump` on `PATH` is older than the source server. `brume execute` checks this before copying anything. Install a `postgresql-client-NN` package whose major version is at least the source's — `postgresql-client-18` covers every supported source.
+
+### ``version `GLIBC_2.34' not found``
+
+The Linux binary of Brume 2.2 needs glibc 2.34 and doesn't start on RHEL 8, Rocky / Alma 8, Debian 11 or Ubuntu 20.04. Upgrade to 2.3 or later, which runs with glibc 2.28.
+
+### `CONFIG_ENV_VAR_MISSING`
+
+A required variable is not set. The message lists every missing one at once. Set them in `.env.brume` or in the environment; the target variables are only needed with the `JDBC` sink — see [`.env.brume` variables](/docs/env/).
+
+### `CONFIG_ENV_FILE_INVALID`
+
+`.env.brume` has a malformed line or the same key twice. The message gives the key and the line numbers, never the values.
+
+### `CONFIG_PROPERTY_INVALID`
+
+A variable holds a value Brume can't use, e.g. `BRUME_PIPELINE_MODE=FOO` or `BRUME_PARALLELISM=abc`. The message names the variable, the rejected value and the accepted ones.
+
+### `CONFIG_EXTRACTION_FILTER_INVALID`
+
+A `filter` in `extraction.tables` doesn't compile on the source — unknown column, syntax error. Brume checks each filter with `EXPLAIN` before writing anything, so the target is untouched. The message quotes PostgreSQL's reason.
+
+### `CONFIG_CLI_USAGE`
+
+Unknown subcommand or option, or a missing value. The message suggests the closest name (`Did you mean …`) and Brume exits with `1`. Run `brume <command> --help` for the list.
+
+### `[CONFIG_UNKNOWN_KEY]` (warning)
+
+`brume.yml` contains a key Brume doesn't know — often a typo such as `fk_dpeth`. The key is ignored and the warning gives its line. Fix the spelling against the [`brume.yml` reference](/docs/configuration/).
 
 ### `Strategy requires a type`
 

@@ -63,6 +63,8 @@ When upgrading from 1.x, pseudonymize again every database you need to join or c
 
 **2.1** changes no output. It accepts `FAKE` on columns linked by a foreign key without a `linked_columns` entry, so upgrading from 2.0 needs no new run.
 
+**2.2** and **2.3** change no output. In `.sql` dumps, the schema part now quotes every identifier and leaves out the lines an older server rejects (see [Loading a dump on another version](/docs/operations/#loading-a-dump-on-another-version)); the data rows don't change.
+
 ## Foreign keys are preserved automatically
 
 When you declare `id` of `users` as `FPE_ID`, Brume detects every foreign key that points to `users.id` (e.g. `orders.user_id`) and rewrites it with the **same encryption**. The result: FK constraints on the target hold without disabling triggers. The same goes for `HASH` and — since 2.1 — `FAKE`, whatever end of the foreign key you declare the rule on — a `FAKE EMAIL` on `customers.email` also applies to `orders.customer_email` if a foreign key links them.

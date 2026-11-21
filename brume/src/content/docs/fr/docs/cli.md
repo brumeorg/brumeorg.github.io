@@ -32,6 +32,8 @@ brume init jdbc    # sink = cible PostgreSQL via JDBC
 
 Les deux templates incluent aussi les blocs secrets et source. Éditez le `.env.brume` généré, puis exécutez `brume diag` pour le valider — `diag` vérifie la configuration sans se connecter à aucune base ; `brume plan` vérifie ensuite la connexion à la source. Ce fichier remplace la convention `.env` historique — toutes les autres sous-commandes lisent exclusivement `.env.brume`.
 
+`init` cherche aussi `pg_dump`. S'il est absent ou antérieur à la 18, `init` affiche la commande d'installation pour votre système et continue : `pg_dump` n'est nécessaire qu'à l'exécution.
+
 :::caution
 `brume init` refuse d'écraser un `.env.brume` existant. Supprimez ou renommez le fichier existant si vous voulez vraiment le régénérer.
 :::
@@ -116,7 +118,7 @@ brume audit --anonymity \
 | `--auto-detect-quasi-id` | l'un des deux | Détecte les colonnes quasi-identifiantes d'après leur nom. Ignoré si `--quasi-id` est fourni. |
 | `--strict` | non | Sort avec le code `8` si une table auditée a un `k_min` inférieur à `--k-min`. |
 | `--k-min N` | non | Seuil utilisé par `--strict`. Défaut : `5`. |
-| `--sample-rate R` | non | Fraction dans `(0, 1]` de chaque table à parcourir, via `TABLESAMPLE SYSTEM`. Défaut : `1.0` (parcours complet). |
+| `--sample-rate R` | non | Fraction dans `(0, 1]` de chaque table à parcourir, via `TABLESAMPLE SYSTEM`. Défaut : `1.0` (parcours complet). Toute autre valeur est refusée. |
 | `--output-json CHEMIN` | non | Écrit aussi le rapport JSON dans un fichier. |
 | `--output-markdown CHEMIN` | non | Écrit aussi le rapport Markdown — celui à remettre à votre DPO — dans un fichier. |
 
@@ -140,19 +142,24 @@ Avant de lire la moindre ligne, `plan`, `dry-run` et `execute` lancent des véri
 |---|---|---|
 | Source joignable (`CONNECTION_SOURCE_UNREACHABLE`) | ✓ | ✓ |
 | `BRUME_SCHEMA` existe sur la source, et le rôle a `USAGE` dessus | ✓ | ✓ |
+| Chaque `filter` d'`extraction.tables` compile sur la source (`CONFIG_EXTRACTION_FILTER_INVALID`) | ✓ | ✓ |
 | `pg_dump` sur le `PATH` (`PREFLIGHT_PG_DUMP_NOT_FOUND`) | — | ✓ |
 | Version majeure de `pg_dump` ≥ version majeure de la source (`PREFLIGHT_PG_DUMP_VERSION_MISMATCH`) | — | ✓ |
 | Cible joignable (`CONNECTION_TARGET_UNREACHABLE`), le rôle peut `CREATE` et possède le schéma cible s'il existe | — | ✓ (cible base de données uniquement) |
+
+`execute` ne remplace le schéma cible qu'une fois ces vérifications et le plan — `brume.max-target-rows` compris — passés : une exécution refusée laisse la cible intacte.
 
 `brume audit` vérifie seulement que la cible est joignable.
 
 ## Codes de sortie
 
+Chaque erreur s'affiche sous la forme `[CODE] message`, suivie d'une suggestion et du code de sortie — y compris les erreurs trouvées avant le démarrage de la sous-commande, comme une variable manquante ou un `.env.brume` mal formé. Avec `--json`, l'erreur est un objet JSON. Seule une erreur inattendue (`127`) ajoute une stacktrace, à joindre à un rapport de bug.
+
 | Code | Signification |
 |---|---|
 | `0` | Succès — y compris une exécution qui a perdu des lignes sur une collision `UNIQUE` (signalée, pas fatale) |
-| `1` | Erreur de configuration (`brume.yml` invalide, variable `.env.brume` manquante, configuration refusée par `plan`) |
-| `2` | Erreur de connexion (source ou cible injoignable) — aussi une option ou un argument inconnu en ligne de commande |
+| `1` | Erreur de configuration (`brume.yml` ou `.env.brume` invalide, variable manquante, configuration refusée par `plan`) — aussi une option ou un argument inconnu en ligne de commande |
+| `2` | Erreur de connexion (source ou cible injoignable) |
 | `3` | `brume.max-target-rows` dépassé |
 | `4` | Erreur de schéma (par ex. échec de `pg_dump`) |
 | `5` | Erreur d'écriture (cible ou fichier de dump) |
@@ -160,7 +167,12 @@ Avant de lire la moindre ligne, `plan`, `dry-run` et `execute` lancent des véri
 | `7` | Délai dépassé (requête ou exécution totale) |
 | `8` | `brume audit --anonymity` : politique non respectée |
 | `127` | Erreur inattendue |
-| `130` | Exécution annulée (SIGTERM / Ctrl-C) |
+| `130` | Exécution annulée par `Ctrl-C` (`SIGINT`) |
+| `143` | Exécution annulée par `SIGTERM` (`docker stop`, arrêt d'un pod, job de CI annulé) |
+
+:::note[Changé en 2.2]
+Une option ou un argument inconnu sortait en `2`, le code des erreurs de connexion : un script qui relance sur `2` pouvait boucler sur une faute de frappe. Une exécution arrêtée par `SIGTERM` sort en `143`, le code POSIX (128 + 15), et non en `130` comme annoncé jusqu'ici. Voir [Arrêter une exécution](/fr/docs/operations/#arrêter-une-exécution).
+:::
 
 ## Suite
 

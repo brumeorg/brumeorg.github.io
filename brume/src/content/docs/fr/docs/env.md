@@ -11,6 +11,8 @@ Générez un template avec [`brume init dump`](/fr/docs/cli/#brume-init) (sink f
 Depuis Brume 1.6, exécuter n'importe quelle sous-commande avec `BRUME_HMAC_SECRET` ou `BRUME_FPE_KEY` laissés à la valeur placeholder émise par `brume init` déclenche un warning. Les placeholders ne sont **pas sûrs** — ils sont partagés entre tous les scaffolds et vident la pseudonymisation de son sens. Remplacez-les par des valeurs à haute entropie avant `brume execute`.
 :::
 
+Brume vérifie les variables obligatoires avant de démarrer et liste toutes celles qui manquent (`CONFIG_ENV_VAR_MISSING`). Un mot de passe peut être vide, mais sa variable doit exister. Une ligne mal formée ou une clé en double dans `.env.brume` arrête Brume sur `CONFIG_ENV_FILE_INVALID`, qui donne la clé et les numéros de ligne, jamais les valeurs.
+
 ## Secrets
 
 Ces deux valeurs sont l'« information supplémentaire » de l'art. 4.5 du RGPD — protégez-les au même niveau que les données source.
@@ -19,6 +21,10 @@ Ces deux valeurs sont l'« information supplémentaire » de l'art. 4.5 du RGPD 
 |---|---|---|
 | `BRUME_HMAC_SECRET` | **oui** | Sème `FAKE`, `HASH`, `DATE_SHIFT`, `linked_columns`. Chaîne à haute entropie d'au moins 16 caractères (32 et plus recommandés). |
 | `BRUME_FPE_KEY` | **oui** | Clé du cipher FF1 utilisé par `FPE_ID` / `FPE_UUID`. Exactement **16, 24 ou 32 caractères**. |
+
+:::caution[Changé en 2.2]
+Avant la 2.2, une exécution sans `BRUME_HMAC_SECRET` ou `BRUME_FPE_KEY` ne s'arrêtait pas : elle prenait comme clé une chaîne fixe et publique, si bien que n'importe qui pouvait recalculer ses pseudonymes. Si une exécution avec une version antérieure a pu démarrer sans ces variables, supprimez ce qu'elle a produit et relancez-la avec la 2.2 ou plus récente.
+:::
 
 :::caution[Rotation avec précaution]
 La rotation de ces secrets **casse le déterminisme** : les exécutions futures produisent des faux différents pour les mêmes valeurs source. Si vous avez des systèmes aval qui joignent sur des colonnes `HASH`-ées ou `FPE_*`-chiffrées, planifiez une bascule coordonnée.
@@ -46,6 +52,8 @@ Brume supporte deux **types de sink**, choisis par `BRUME_SINK_TYPE` — `brume 
 - **`DUMP`** — écrit un fichier `.sql`, rechargeable avec `psql`.
 
 ### Sink = `jdbc` (base PostgreSQL)
+
+`execute` (avec le sink `JDBC`) et `audit` ont besoin de ces variables ; `plan`, `dry-run` et `scan` non.
 
 | Variable | Requise | Description |
 |---|---|---|
@@ -76,6 +84,8 @@ Avec le sink `DUMP`, les variables cible sont ignorées et aucune connexion à l
 | `BRUME_DATE_SHIFT_MAX_DAYS` | non | `30` | Fenêtre de `DATE_SHIFT`, en jours. |
 | `BRUME_PGDUMP_PATH` | non | `pg_dump` | La commande `pg_dump` à lancer (éventuellement un chemin complet). |
 | `BRUME_CONFIG_PATH` | non | `brume.yml` | Chemin du fichier de règles. |
+
+Depuis la 2.2, ces valeurs sont vérifiées au démarrage : une valeur inutilisable — `BRUME_PIPELINE_MODE=FOO`, `BRUME_PARALLELISM=0`, un `BRUME_SOURCE_SSLMODE` inconnu — arrête Brume avant toute connexion, avec une erreur qui nomme la variable et les valeurs acceptées. Une `BRUME_LOCALE` inconnue déclenche seulement un avertissement (`CONFIG_LOCALE_UNKNOWN`).
 
 ## Exemple `.env.brume`
 

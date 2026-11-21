@@ -87,6 +87,8 @@ Chaque entrée accepte :
 
 Le `filter` est injecté tel quel dans la requête d'extraction — il doit être du **SQL valide** pour votre version de Postgres. Quotez correctement les littéraux.
 
+Avant d'écrire quoi que ce soit, `plan`, `dry-run` et `execute` vérifient chaque filtre sur la source avec `EXPLAIN` — aucune ligne n'est lue. Un filtre qui cite une colonne inconnue ou ne se parse pas arrête l'exécution sur `CONFIG_EXTRACTION_FILTER_INVALID`, avec le message de PostgreSQL.
+
 ### Noms de tables et de colonnes
 
 Écrivez les noms de tables et de colonnes **exactement comme ils sont stockés dans PostgreSQL** — casse, accents et espaces compris, **sans guillemets SQL** :
@@ -209,6 +211,8 @@ Brume valide la configuration au démarrage et refuse de s'exécuter sur :
 - Une entrée `linked_columns` référençant une colonne également déclarée avec une stratégie différente.
 
 `brume plan` signale ces cas avant toute écriture. Lancez [`brume dry-run`](/fr/docs/cli/#brume-dry-run) pour dérouler tout le pipeline sans toucher la cible.
+
+Une erreur indique le chemin YAML (`anonymization.tables[0].columns[1].strategy`), sa ligne et les valeurs acceptées. Une clé que Brume ne connaît pas — une faute de frappe comme `fk_dpeth` — est ignorée avec un avertissement `CONFIG_UNKNOWN_KEY` qui donne sa ligne.
 
 ## Exemple complet
 

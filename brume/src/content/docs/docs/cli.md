@@ -32,6 +32,8 @@ brume init jdbc    # sink = PostgreSQL target over JDBC
 
 Both templates also include the secret and source blocks. Edit the generated `.env.brume`, then run `brume diag` to validate it — `diag` checks the configuration without connecting to any database; `brume plan` then checks the source connection. The file replaces the legacy `.env` convention — every other subcommand reads `.env.brume` exclusively.
 
+`init` also looks for `pg_dump`. When it is missing or older than 18, `init` prints the install command for your system and goes on: `pg_dump` is only needed at run time.
+
 :::caution
 `brume init` refuses to overwrite an existing `.env.brume`. Delete or rename the existing file first if you really want to regenerate it.
 :::
@@ -116,7 +118,7 @@ brume audit --anonymity \
 | `--auto-detect-quasi-id` | one of the two | Detects quasi-identifier columns from their names. Ignored when `--quasi-id` is set. |
 | `--strict` | no | Exits with code `8` if an audited table has `k_min` below `--k-min`. |
 | `--k-min N` | no | Threshold used by `--strict`. Default: `5`. |
-| `--sample-rate R` | no | Fraction in `(0, 1]` of each table to scan, via `TABLESAMPLE SYSTEM`. Default: `1.0` (full scan). |
+| `--sample-rate R` | no | Fraction in `(0, 1]` of each table to scan, via `TABLESAMPLE SYSTEM`. Default: `1.0` (full scan). Any other value is refused. |
 | `--output-json PATH` | no | Also writes the JSON report to a file. |
 | `--output-markdown PATH` | no | Also writes the Markdown report — the one to hand to your DPO — to a file. |
 
@@ -140,19 +142,24 @@ Before reading any row, `plan`, `dry-run` and `execute` run quick checks and sto
 |---|---|---|
 | Source reachable (`CONNECTION_SOURCE_UNREACHABLE`) | ✓ | ✓ |
 | `BRUME_SCHEMA` exists on the source, and the role has `USAGE` on it | ✓ | ✓ |
+| Every `filter` of `extraction.tables` compiles on the source (`CONFIG_EXTRACTION_FILTER_INVALID`) | ✓ | ✓ |
 | `pg_dump` on `PATH` (`PREFLIGHT_PG_DUMP_NOT_FOUND`) | — | ✓ |
 | `pg_dump` major version ≥ source major version (`PREFLIGHT_PG_DUMP_VERSION_MISMATCH`) | — | ✓ |
 | Target reachable (`CONNECTION_TARGET_UNREACHABLE`), the role can `CREATE`, and owns the target schema if it exists | — | ✓ (database target only) |
+
+`execute` replaces the target schema only once these checks and the plan — `brume.max-target-rows` included — have passed: a refused run leaves the target untouched.
 
 `brume audit` only checks that the target is reachable.
 
 ## Exit codes
 
+Each error is printed as `[CODE] message`, followed by a suggestion and the exit code — including errors found before the subcommand starts, such as a missing variable or a malformed `.env.brume`. With `--json`, the error is a JSON object. Only an unexpected error (`127`) adds a stack trace, to attach to a bug report.
+
 | Code | Meaning |
 |---|---|
 | `0` | Success — including runs that lost rows to a `UNIQUE` collision (reported, not fatal) |
-| `1` | Configuration error (invalid `brume.yml`, missing `.env.brume` variable, configuration refused by `plan`) |
-| `2` | Connection error (source or target unreachable) — also an unknown option or argument on the command line |
+| `1` | Configuration error (invalid `brume.yml` or `.env.brume`, missing variable, configuration refused by `plan`) — also an unknown option or argument on the command line |
+| `2` | Connection error (source or target unreachable) |
 | `3` | `brume.max-target-rows` exceeded |
 | `4` | Schema error (e.g. `pg_dump` failed) |
 | `5` | Write error (target or dump file) |
@@ -160,7 +167,12 @@ Before reading any row, `plan`, `dry-run` and `execute` run quick checks and sto
 | `7` | Timeout (statement or total run) |
 | `8` | `brume audit --anonymity`: policy violated |
 | `127` | Unexpected error |
-| `130` | Run cancelled (SIGTERM / Ctrl-C) |
+| `130` | Run cancelled by `Ctrl-C` (`SIGINT`) |
+| `143` | Run cancelled by `SIGTERM` (`docker stop`, pod shutdown, cancelled CI job) |
+
+:::note[Changed in 2.2]
+An unknown option or argument used to exit with `2`, the connection-error code: a script that retries on `2` could loop on a typo. A run stopped by `SIGTERM` exits with `143`, the POSIX code (128 + 15), not `130` as documented before. See [Stopping a run](/docs/operations/#stopping-a-run).
+:::
 
 ## Next
 

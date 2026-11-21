@@ -11,6 +11,8 @@ Generate a template with [`brume init dump`](/docs/cli/#brume-init) (SQL file si
 As of Brume 1.6, running any subcommand with `BRUME_HMAC_SECRET` or `BRUME_FPE_KEY` left at the placeholder value emitted by `brume init` triggers a warning. The placeholders are **not safe** — they're shared across every scaffold and defeat the point of pseudonymization. Replace them with high-entropy values before `brume execute`.
 :::
 
+Brume checks the required variables before starting and lists every missing one (`CONFIG_ENV_VAR_MISSING`). A password may be empty, but its variable must be set. A malformed line or a duplicated key in `.env.brume` stops Brume with `CONFIG_ENV_FILE_INVALID`, which gives the key and the line numbers, never the values.
+
 ## Secrets
 
 These two values are the "additional information" of GDPR Art. 4.5 — protect them at the same level as the source data.
@@ -19,6 +21,10 @@ These two values are the "additional information" of GDPR Art. 4.5 — protect t
 |---|---|---|
 | `BRUME_HMAC_SECRET` | **yes** | Seeds `FAKE`, `HASH`, `DATE_SHIFT`, `linked_columns`. High-entropy string, at least 16 characters (32+ recommended). |
 | `BRUME_FPE_KEY` | **yes** | Keys the FF1 cipher used by `FPE_ID` / `FPE_UUID`. Exactly **16, 24 or 32 characters**. |
+
+:::caution[Changed in 2.2]
+Before 2.2, a run with `BRUME_HMAC_SECRET` or `BRUME_FPE_KEY` unset did not stop: it used a fixed, public string as the key, so anyone could recompute its pseudonyms. If a run with an earlier version may have started without these variables, delete what it produced and run it again with 2.2 or later.
+:::
 
 :::caution[Rotate carefully]
 Rotating these secrets **breaks determinism**: future runs produce different fakes for the same source values. If you have downstream systems that join on `HASH`-ed or `FPE_*`-encrypted columns, plan a coordinated cutover.
@@ -46,6 +52,8 @@ Brume supports two **sink types**, selected by `BRUME_SINK_TYPE` — `brume init
 - **`DUMP`** — write a `.sql` file, restorable with `psql`.
 
 ### Sink = `jdbc` (PostgreSQL database)
+
+`execute` (with the `JDBC` sink) and `audit` need these variables; `plan`, `dry-run` and `scan` don't.
 
 | Variable | Required | Description |
 |---|---|---|
@@ -76,6 +84,8 @@ With the `DUMP` sink, the target variables are ignored and no target connection 
 | `BRUME_DATE_SHIFT_MAX_DAYS` | no | `30` | Window of `DATE_SHIFT`, in days. |
 | `BRUME_PGDUMP_PATH` | no | `pg_dump` | The `pg_dump` command to run (may be a full path). |
 | `BRUME_CONFIG_PATH` | no | `brume.yml` | Path of the rules file. |
+
+Since 2.2, these values are checked at startup: a value Brume can't use — `BRUME_PIPELINE_MODE=FOO`, `BRUME_PARALLELISM=0`, an unknown `BRUME_SOURCE_SSLMODE` — stops it before any connection, with an error naming the variable and the accepted values. An unknown `BRUME_LOCALE` only triggers a warning (`CONFIG_LOCALE_UNKNOWN`).
 
 ## Example `.env.brume`
 

@@ -60,17 +60,34 @@ Brume 2.0 change certaines valeurs pseudonymisées par rapport à la 1.x — fau
 
 Brume 2.1 ne change aucune valeur pseudonymisée : passer de la 2.0 à la 2.1 ne demande aucune nouvelle exécution. `FAKE` suit désormais les clés étrangères sans entrée `linked_columns` — les entrées existantes continuent de fonctionner.
 
+Brume 2.2 et 2.3 ne changent pas non plus de valeur pseudonymisée. La 2.2 change deux codes de sortie — mettez à jour les scripts qui les testent (voir [Codes de sortie](/fr/docs/cli/#codes-de-sortie)) :
+
+- Une option ou un argument inconnu, et toute erreur avant le démarrage de la sous-commande, sortent désormais en `1` au lieu de `2`. `2` ne signifie plus qu'une erreur de connexion, qu'un script peut relancer.
+- Une exécution arrêtée par `SIGTERM` (`docker stop`, arrêt d'un pod, job de CI annulé) sort en `143`. `Ctrl-C` sort toujours en `130`.
+
+La 2.2 refuse aussi de démarrer quand une variable obligatoire manque — voir [Variables `.env.brume`](/fr/docs/env/). La 2.3 ne change que le binaire Linux, qui démarre maintenant sur RHEL 8 et les autres systèmes en glibc 2.28, et fait afficher le bon numéro à `brume --version` (le binaire 2.2 affichait `2.1`).
+
 ### Compte source en lecture seule
 
 Voir la [référence `.env.brume`](/fr/docs/env/#créer-un-compte-en-lecture-seule-sur-la-source) pour les grants SQL.
 
 ## Compatibilité PostgreSQL
 
-Brume supporte **PostgreSQL 12, 13, 14, 15, 16, 17 et 18** à la fois sur source et cible.
+Brume supporte **PostgreSQL 12, 13, 14, 15, 16, 17 et 18** à la fois sur source et cible. Depuis la 2.2, chaque modification de Brume passe sa suite de tests sur chacune de ces sept versions, et le binaire natif est testé de bout en bout contre chacune d'elles.
 
-Le binaire `pg_dump` utilisé par Brume (pour la réplication du schéma) doit être sur le `PATH` et **sa version majeure doit être supérieure ou égale à celle de la source**. Si votre source est Postgres 17, installez `postgresql-client-17` ou plus récent.
+Le binaire `pg_dump` utilisé par Brume (pour la réplication du schéma) doit être sur le `PATH` et **sa version majeure doit être supérieure ou égale à celle de la source**. **`pg_dump` 18 est recommandé** : un seul client lit toutes les sources supportées.
 
 `brume execute` vérifie les deux avant de copier quoi que ce soit, et s'arrête avec `PREFLIGHT_PG_DUMP_NOT_FOUND` ou `PREFLIGHT_PG_DUMP_VERSION_MISMATCH` — voir [Contrôles préalables](/fr/docs/cli/#contrôles-préalables).
+
+### Recharger un dump sur une autre version
+
+Depuis la 2.2, le schéma d'un dump `.sql` se recharge sur un serveur plus ancien et avec un `psql` plus ancien. Brume retire ce qu'ils refusent — les lignes `\restrict` / `\unrestrict` des versions récentes de `pg_dump` et `SET transaction_timeout` (`pg_dump` 17+) — et met chaque identifiant entre guillemets.
+
+Charger dans une cible **plus ancienne que la source** reste du best-effort : une fonctionnalité que la cible ne connaît pas (par ex. `UNIQUE NULLS NOT DISTINCT`, PostgreSQL 15+) échoue quel que soit le client.
+
+:::caution
+Sans `\restrict`, `psql` exécuterait une méta-commande glissée dans le schéma de la source. Ne rechargez qu'un dump issu d'une source de confiance.
+:::
 
 ## Logging
 
@@ -94,6 +111,16 @@ brume execute --json 2> logs.jsonl
 
 Chaque ligne est un objet JSON avec `timestamp`, `level`, `event`, `table` et des champs contextuels.
 
+## Arrêter une exécution
+
+`Ctrl-C` (`SIGINT`) ou `SIGTERM` — `docker stop`, arrêt d'un pod, job de CI annulé — annule les requêtes en cours et `pg_dump`, puis laisse à Brume jusqu'à 8 secondes pour fermer la connexion à la cible ou le fichier de dump, dans le délai de grâce de 10 secondes de `docker stop`. L'exécution se termine sur `[RUN_CANCELLED]` et le code de sortie `130` (`SIGINT`) ou `143` (`SIGTERM`).
+
+La cible reste incomplète : relancez `brume execute`. Un dump compressé est fermé proprement — il se décompresse sans erreur — mais s'arrête là où l'exécution s'est arrêtée.
+
+:::note[Changé en 2.2]
+Avant la 2.2, le binaire natif s'arrêtait sur `SIGTERM` sans rien annuler ni afficher, et pouvait laisser un dump compressé tronqué.
+:::
+
 ## Erreurs courantes
 
 ### `Connection refused`
@@ -106,7 +133,35 @@ La source ou la cible n'est pas joignable. Le code d'erreur indique laquelle : `
 
 ### `PREFLIGHT_PG_DUMP_VERSION_MISMATCH`
 
-Le `pg_dump` du `PATH` est plus ancien que le serveur source. `brume execute` le vérifie avant de copier quoi que ce soit. Installez un paquet `postgresql-client-NN` dont la version majeure est au moins celle de la source.
+Le `pg_dump` du `PATH` est plus ancien que le serveur source. `brume execute` le vérifie avant de copier quoi que ce soit. Installez un paquet `postgresql-client-NN` dont la version majeure est au moins celle de la source — `postgresql-client-18` couvre toutes les sources supportées.
+
+### ``version `GLIBC_2.34' not found``
+
+Le binaire Linux de Brume 2.2 exige glibc 2.34 et ne démarre pas sur RHEL 8, Rocky / Alma 8, Debian 11 ni Ubuntu 20.04. Passez à la 2.3 ou plus récente, qui tourne avec glibc 2.28.
+
+### `CONFIG_ENV_VAR_MISSING`
+
+Une variable obligatoire n'est pas définie. Le message les liste toutes en une fois. Définissez-les dans `.env.brume` ou dans l'environnement ; les variables cible ne sont nécessaires qu'avec le sink `JDBC` — voir [Variables `.env.brume`](/fr/docs/env/).
+
+### `CONFIG_ENV_FILE_INVALID`
+
+`.env.brume` contient une ligne mal formée ou deux fois la même clé. Le message donne la clé et les numéros de ligne, jamais les valeurs.
+
+### `CONFIG_PROPERTY_INVALID`
+
+Une variable a une valeur que Brume ne peut pas utiliser, par ex. `BRUME_PIPELINE_MODE=FOO` ou `BRUME_PARALLELISM=abc`. Le message nomme la variable, la valeur refusée et les valeurs acceptées.
+
+### `CONFIG_EXTRACTION_FILTER_INVALID`
+
+Un `filter` d'`extraction.tables` ne compile pas sur la source — colonne inconnue, erreur de syntaxe. Brume vérifie chaque filtre avec `EXPLAIN` avant d'écrire quoi que ce soit : la cible reste intacte. Le message cite la raison donnée par PostgreSQL.
+
+### `CONFIG_CLI_USAGE`
+
+Sous-commande ou option inconnue, ou valeur manquante. Le message propose le nom le plus proche (`Did you mean …`) et Brume sort en `1`. Lancez `brume <commande> --help` pour la liste.
+
+### `[CONFIG_UNKNOWN_KEY]` (avertissement)
+
+`brume.yml` contient une clé que Brume ne connaît pas — souvent une faute de frappe comme `fk_dpeth`. La clé est ignorée et l'avertissement donne sa ligne. Corrigez l'orthographe d'après la [référence `brume.yml`](/fr/docs/configuration/).
 
 ### `Strategy requires a type`
 

@@ -87,6 +87,8 @@ Each entry accepts:
 
 The `filter` is injected as-is into the extraction query — it must be **valid SQL** for your Postgres version. Quote literals correctly.
 
+Before writing anything, `plan`, `dry-run` and `execute` check every filter on the source with `EXPLAIN` — no row is read. A filter that names an unknown column or doesn't parse stops the run with `CONFIG_EXTRACTION_FILTER_INVALID` and PostgreSQL's message.
+
 ### Table and column names
 
 Write table and column names **exactly as stored in PostgreSQL** — case, accents and spaces included, **without SQL quotes**:
@@ -209,6 +211,8 @@ Brume validates the configuration at startup and refuses to run on:
 - A `linked_columns` entry referencing a column also declared with a different strategy.
 
 `brume plan` reports these before anything is written. Run [`brume dry-run`](/docs/cli/#brume-dry-run) to exercise the full pipeline without touching the target.
+
+An error points to the YAML path (`anonymization.tables[0].columns[1].strategy`), its line and the accepted values. A key Brume doesn't know — a typo such as `fk_dpeth` — is ignored with a `CONFIG_UNKNOWN_KEY` warning that gives its line.
 
 ## Full example
 

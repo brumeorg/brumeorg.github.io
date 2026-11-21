@@ -3,16 +3,21 @@ title: Démarrage
 description: Installez Brume sur votre machine et vérifiez l'installation en moins de deux minutes.
 ---
 
-Brume est distribué comme une CLI native via les gestionnaires de paquets standard pour **Debian/Ubuntu**, **Fedora/CentOS** et **macOS**.
+Brume est distribué comme une CLI native via les gestionnaires de paquets standard pour **Debian/Ubuntu**, **RHEL/Rocky/Alma/Fedora** et **macOS**.
 
 ## Prérequis
 
+- **Linux x86_64 avec glibc 2.28 ou plus récente** — RHEL, Rocky, Alma et Oracle Linux 8+, Fedora, Debian 11+, Ubuntu 20.04+ — ou **macOS sur Apple Silicon**
 - **PostgreSQL 12, 13, 14, 15, 16, 17 ou 18** sur la base source
 - Une instance PostgreSQL **cible** *ou* un répertoire en écriture pour la sortie `.sql`
 - Un **compte en lecture seule** sur la base source (recommandé pour la sécurité)
 
 :::tip[Pourquoi en lecture seule ?]
 Brume n'écrit jamais sur la source. Utiliser un compte en lecture seule est votre dernière ligne de défense contre une coquille dans votre config ou une chaîne de connexion mal routée.
+:::
+
+:::note[Changé en 2.3]
+Le binaire Linux démarre désormais avec glibc 2.28. Celui de la 2.2 exigeait glibc 2.34 : sur RHEL 8, Rocky / Alma 8, Debian 11 ou Ubuntu 20.04, il s'installait puis s'arrêtait au lancement sur ``version `GLIBC_2.34' not found`` — passez à la 2.3. Avant publication, chaque version est maintenant installée et lancée sur RHEL 8 / 9, Debian 11 / 13 et Ubuntu 20.04 / 24.04. Amazon Linux 2 et CentOS 7, dont la glibc est plus ancienne, ne sont pas supportés.
 :::
 
 ## Installation sur Debian / Ubuntu
@@ -28,7 +33,7 @@ sudo apt-get install brume
 sudo apt-get update && sudo apt-get upgrade brume
 ```
 
-## Installation sur Fedora / CentOS
+## Installation sur RHEL / Rocky / Alma / Fedora
 
 ```bash
 # 1. Configurer le dépôt (une seule fois)
@@ -54,21 +59,21 @@ brew upgrade brume
 
 ## Installer `pg_dump`
 
-Brume délègue à `pg_dump` la réplication du schéma source. Le binaire doit être sur le `PATH` et **sa version majeure doit être supérieure ou égale à celle de la source** — par exemple pour Postgres 17, installez `postgresql-client-17` ou plus récent.
+Brume délègue à `pg_dump` la réplication du schéma source. Le binaire doit être sur le `PATH` et **sa version majeure doit être supérieure ou égale à celle de la source**. **`pg_dump` 18 est recommandé** : un seul client lit toutes les sources supportées, de PostgreSQL 12 à 18.
 
 ```bash
 # Debian / Ubuntu
-sudo apt-get install postgresql-client-17
+sudo apt-get install postgresql-client-18
 
-# Fedora / CentOS
-sudo dnf install postgresql17
+# RHEL / Rocky / Alma / Fedora
+sudo dnf install postgresql18
 
 # macOS
 brew install libpq
 brew link --force libpq
 ```
 
-Remplacez `17` par la version majeure de votre source. `brume execute` vérifie la version de `pg_dump` par rapport à la source avant de copier quoi que ce soit.
+Si votre distribution ne fournit pas la version 18, ces paquets viennent du [dépôt PostgreSQL](https://www.postgresql.org/download/linux/). `brume execute` vérifie la version de `pg_dump` par rapport à la source avant de copier quoi que ce soit, et `brume init` affiche la commande d'installation pour votre système quand `pg_dump` est absent ou antérieur à la 18.
 
 ## Vérifier l'installation
 

@@ -11,7 +11,7 @@ Cette documentation est organisée comme un parcours : découvrir, comprendre, c
 
 Nouveau sur Brume ? Démarrez par ces deux pages.
 
-- [**Démarrage**](/fr/docs/getting-started/) — installez Brume sur Debian, Fedora ou macOS et vérifiez l'installation.
+- [**Démarrage**](/fr/docs/getting-started/) — installez Brume sur Debian, Ubuntu, RHEL, Fedora ou macOS et vérifiez l'installation.
 - [**Votre première pseudonymisation**](/fr/docs/first-pseudonymization/) — écrivez un `brume.yml` minimal, exécutez `brume plan` puis `brume execute`, de bout en bout en cinq minutes.
 
 ## Concepts
