@@ -152,13 +152,14 @@ anonymization:
           strategy: FAKE
           type: ADDRESS
         - name: metadata
-          strategy: FAKE
           type: JSONB
           json_paths:
             - path: $.contact.email
               type: EMAIL
+              strategy: FAKE
             - path: $.contact.phone
               type: PHONE
+              strategy: FAKE
 ```
 
 Pourquoi ces choix :
@@ -171,7 +172,7 @@ Pourquoi ces choix :
 | `birth_date` | `DATE_SHIFT` | Décale chaque date d'un nombre de jours déterministe : les distributions d'âge restent exploitables. |
 | `password_hash` | `HASH` | HMAC-SHA256 à clé : opaque, stable, jamais affiché. |
 | `notes` | `NULLIFY` | Un texte libre peut contenir n'importe quoi. Le supprimer est la minimisation la plus forte. |
-| `metadata` | `FAKE` + `JSONB` | Seuls les chemins listés sont réécrits ; le reste du document est conservé. |
+| `metadata` | `type: JSONB` + `json_paths` | Seuls les chemins listés sont réécrits, chacun avec sa propre stratégie ; le reste du document est conservé. |
 | `products` (non déclarée) | `KEEP` | Pas de données personnelles. Les colonnes non déclarées sont copiées telles quelles. |
 
 `products` est copiée alors qu'elle n'est pas dans `extraction.tables` : avec la valeur par défaut `orphan_policy: KEEP_PARENTS`, chaque parent référencé par une ligne copiée est copié aussi, pour qu'aucune clé étrangère ne pointe dans le vide. Les détails sont dans la [référence `brume.yml`](/fr/docs/configuration/) et dans [Stratégies de pseudonymisation](/fr/docs/strategies/).
@@ -192,7 +193,7 @@ brume plan
 brume dry-run
 ```
 
-Extraction, transformation et écriture s'exécutent, mais l'écriture ne va nulle part. Cela détecte ce que `plan` ne voit pas : chemins JSONB qui ne résolvent jamais, incohérences de types, échecs de résolution des clés étrangères.
+Extraction, transformation et écriture s'exécutent, mais l'écriture ne va nulle part. Cela détecte ce que `plan` ne voit pas : erreurs pendant la transformation des valeurs, incohérences de types, échecs de résolution des clés étrangères. Un chemin JSONB dont le parent n'est pas un objet sur une ligne apparaît en avertissement.
 
 ## Étape 7 — Exécuter
 

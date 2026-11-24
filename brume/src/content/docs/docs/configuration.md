@@ -23,7 +23,7 @@ anonymization:     # how to transform what's copied
     - table: ...
       columns:
         - name: ...
-          strategy: ...
+          strategy: ...    # not on a JSONB column
           type: ...        # only for FAKE / MASK
           json_paths: ...  # only for JSONB
 ```
@@ -170,38 +170,56 @@ The column name to transform.
 
 One of: `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `DATE_SHIFT`, `KEEP`. See [strategies](/docs/strategies/).
 
+Required, except on a `type: JSONB` column: there, each `json_paths` entry carries its own strategy, and a `strategy` on the column is ignored with the warning `CONFIG_JSONB_STRATEGY_IGNORED`.
+
 #### `columns[].type`
 
 Required when `strategy` is `FAKE` or `MASK`. One of: `EMAIL`, `FIRST_NAME`, `LAST_NAME`, `PHONE`, `IBAN`, `ADDRESS`, `IP_ADDRESS`, `DATE`, `JSONB`. See [semantic types](/docs/semantic-types/).
 
 #### `columns[].json_paths`
 
-Required when `type` is `JSONB`. List of JSON paths to anonymize inside the document. Other paths are kept as-is.
+Required when `type` is `JSONB`. The fields to anonymize inside the document, each with its own strategy. Other fields are kept as-is — no `KEEP` entry is needed.
 
 ```yaml
 - name: metadata
-  strategy: FAKE
   type: JSONB
   json_paths:
     - path: $.contact.email
       type: EMAIL
+      strategy: FAKE
     - path: $.contact.phone
       type: PHONE
-    - path: $.shipping.address
-      type: ADDRESS
+      strategy: FAKE
+    - path: $.session.token
+      strategy: HASH
 ```
 
 Each path entry accepts:
 
 | Key | Required | Description |
 |---|---|---|
-| `path` | yes | JSONPath (`$.field.subfield`) |
-| `type` | yes | Semantic type to apply at that path |
+| `path` | yes | Path from the document root, in dot notation (`$.field.subfield`), any depth |
+| `strategy` | yes | Strategy applied to that field. Never inherited from the column |
+| `type` | for `FAKE` | Semantic type of that field |
+
+A field missing from a row, or `null`, is left as-is. A path whose parent isn't an object in a row is skipped for that row, with a warning. Nothing reports a path that never matches: check a few rows of the target.
+
+:::caution[Limits]
+- The document must be a JSON object. A value that is an array (`[{...}]`) or a plain value is copied as-is, without warning.
+- Arrays are not traversed: `$.items[0].email` is not supported.
+- A path must lead to a value, not to an object or an array: Brume would replace it with an empty string, even with `KEEP`.
+:::
+
+:::note[Changed in 2.4]
+Each entry needs its own `strategy`. Before 2.4, an entry without one passed validation, then the run failed on the first row. The column itself takes no `strategy` any more — see [semantic types](/docs/semantic-types/#jsonb).
+:::
 
 ## Validation rules
 
 Brume validates the configuration at startup and refuses to run on:
 
+- A column without `strategy` — except a `type: JSONB` column.
+- A `json_paths` entry without `strategy`, or with `strategy: FAKE` and no `type`.
 - A column with `strategy: FAKE` or `MASK` without a `type`.
 - A column with `strategy: NULLIFY` declared on a `NOT NULL` column.
 - `MASK`, or `FAKE` with `type: DATE`, on a `UNIQUE` column — their values would collide (see [UNIQUE columns and collisions](/docs/strategies/#unique-columns-and-collisions)).
@@ -247,11 +265,11 @@ anonymization:
         - name: notes
           strategy: NULLIFY
         - name: metadata
-          strategy: FAKE
           type: JSONB
           json_paths:
             - path: $.shipping.address
               type: ADDRESS
+              strategy: FAKE
 
     - table: audit_logs
       columns:

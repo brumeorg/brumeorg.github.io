@@ -149,13 +149,14 @@ anonymization:
           strategy: FAKE
           type: ADDRESS
         - name: metadata
-          strategy: FAKE
           type: JSONB
           json_paths:
             - path: $.contact.email
               type: EMAIL
+              strategy: FAKE
             - path: $.contact.phone
               type: PHONE
+              strategy: FAKE
 ```
 
 Why these choices:
@@ -168,7 +169,7 @@ Why these choices:
 | `birth_date` | `DATE_SHIFT` | Shifts each date by a deterministic number of days, so age distributions stay usable. |
 | `password_hash` | `HASH` | Keyed HMAC-SHA256: opaque, stable, never displayed. |
 | `notes` | `NULLIFY` | Free text can hold anything. Dropping it is the strongest minimization. |
-| `metadata` | `FAKE` + `JSONB` | Only the listed paths are rewritten; the rest of the document is kept. |
+| `metadata` | `type: JSONB` + `json_paths` | Only the listed paths are rewritten, each with its own strategy; the rest of the document is kept. |
 | `products` (undeclared) | `KEEP` | No personal data. Undeclared columns are copied as-is. |
 
 `products` is copied even though it's not in `extraction.tables`: with the default `orphan_policy: KEEP_PARENTS`, every parent a copied row references comes along, so no foreign key dangles. The details are in the [`brume.yml` reference](/docs/configuration/) and in [Pseudonymization strategies](/docs/strategies/).
@@ -189,7 +190,7 @@ brume plan
 brume dry-run
 ```
 
-Extraction, transformation and write all run, but the write goes nowhere. This catches what `plan` can't: JSONB paths that never resolve, type mismatches, foreign-key resolution failures.
+Extraction, transformation and write all run, but the write goes nowhere. This catches what `plan` can't: errors while transforming the values, type mismatches, foreign-key resolution failures. A JSONB path whose parent isn't an object in some row shows up as a warning.
 
 ## Step 7 — Execute
 

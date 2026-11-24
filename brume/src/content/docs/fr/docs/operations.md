@@ -67,6 +67,8 @@ Brume 2.2 et 2.3 ne changent pas non plus de valeur pseudonymisée. La 2.2 chang
 
 La 2.2 refuse aussi de démarrer quand une variable obligatoire manque — voir [Variables `.env.brume`](/fr/docs/env/). La 2.3 ne change que le binaire Linux, qui démarre maintenant sur RHEL 8 et les autres systèmes en glibc 2.28, et fait afficher le bon numéro à `brume --version` (le binaire 2.2 affichait `2.1`).
 
+Brume 2.4 change un seul cas de valeur pseudonymisée, à titre de correctif : une valeur sous deux types sémantiques qui partagent une clé sémantique — deux chemins `FAKE` d'une même colonne JSONB, ou un `linked_columns` qui regroupe des colonnes de types différents — recevait le faux du premier type rencontré. Chaque type reçoit désormais le sien (voir [Déterminisme et versions](/fr/docs/how-it-works/#déterminisme-et-versions)). Relancez `brume execute` seulement si votre configuration contient un tel cas. La 2.4 change aussi la configuration JSONB : chaque entrée `json_paths` demande sa propre `strategy`, et la colonne n'en prend plus — voir [`json_paths`](/fr/docs/configuration/#columnsjson_paths). Elle corrige `FAKE` + `PHONE` dans le binaire natif, `--help` sur chaque sous-commande, et la version affichée par `brume diag` et les rapports.
+
 ### Compte source en lecture seule
 
 Voir la [référence `.env.brume`](/fr/docs/env/#créer-un-compte-en-lecture-seule-sur-la-source) pour les grants SQL.
@@ -163,13 +165,27 @@ Sous-commande ou option inconnue, ou valeur manquante. Le message propose le nom
 
 `brume.yml` contient une clé que Brume ne connaît pas — souvent une faute de frappe comme `fk_dpeth`. La clé est ignorée et l'avertissement donne sa ligne. Corrigez l'orthographe d'après la [référence `brume.yml`](/fr/docs/configuration/).
 
-### `Strategy requires a type`
+### `CONFIG_STRATEGY_MISSING`
+
+Une colonne ou une entrée `json_paths` ne déclare pas de `strategy` :
 
 ```
-configuration error: column `users.email` declares strategy FAKE but no `type`
+[CONFIG_STRATEGY_MISSING] Column 'users.metadata', json_paths[1] ($.contact.phone) has no 'strategy' declared
 ```
 
-Ajoutez `type: EMAIL` (ou le type qui correspond). Voir [stratégies](/fr/docs/strategies/) et [types](/fr/docs/semantic-types/).
+Ajoutez-en une — `KEEP` copie la valeur telle quelle. Une entrée `json_paths` n'hérite jamais de la stratégie de sa colonne. Une colonne `type: JSONB` fait exception : elle ne prend pas de `strategy` propre. Avant la 2.4, cette configuration passait la validation et l'exécution échouait à la première ligne en `[UNEXPECTED] NullPointerException`.
+
+### `CONFIG_STRATEGY_REQUIRES_TYPE`
+
+```
+[CONFIG_STRATEGY_REQUIRES_TYPE] Column 'users.email' uses strategy FAKE but has no 'type' declared
+```
+
+Ajoutez `type: EMAIL` (ou le type qui correspond), sur une colonne comme sur une entrée `json_paths`. Voir [stratégies](/fr/docs/strategies/) et [types](/fr/docs/semantic-types/).
+
+### `[CONFIG_JSONB_STRATEGY_IGNORED]` (avertissement)
+
+Une colonne `type: JSONB` déclare une `strategy`. Brume ne l'applique jamais — chaque entrée `json_paths` est anonymisée avec la sienne — elle est donc ignorée : `strategy: NULLIFY` n'y vide pas la colonne. Retirez-la de la colonne.
 
 ### `NULLIFY on NOT NULL column`
 
@@ -179,13 +195,13 @@ configuration error: column `users.created_at` is NOT NULL but strategy is NULLI
 
 Choisissez soit une stratégie non-null (`FAKE`, `MASK`, `HASH`, `KEEP`), soit faites un `ALTER` de la colonne pour la rendre nullable sur la cible.
 
-### `JSONB path does not resolve`
+### `JSON path … is not an object node` (avertissement)
 
 ```
-warning: path `$.contact.phone` never resolved across 12,498 rows of `users.metadata`
+JSON path '$.contact.phone' — segment 'contact' is not an object node; skipping
 ```
 
-Le chemin est faux ou n'existe dans aucune ligne de la colonne. Inspectez quelques lignes manuellement et ajustez le chemin. Brume continue le traitement — c'est un avertissement, pas une erreur fatale.
+Sur cette ligne, `contact` est absent ou n'est pas un objet : le chemin y est ignoré. Brume continue avec le reste du document — c'est un avertissement, pas une erreur. Un champ absent en bout de chemin, ou `null`, est laissé tel quel sans avertissement, et rien ne signale un chemin qui ne correspond jamais : vérifiez quelques lignes de la cible. Voir les [limites de `json_paths`](/fr/docs/configuration/#columnsjson_paths).
 
 ### `Template secret still in use`
 

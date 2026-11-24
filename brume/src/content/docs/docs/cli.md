@@ -79,7 +79,7 @@ Output:
 
 ## `brume dry-run`
 
-Runs the **full pipeline** — extraction, transformation, write — but the write goes to a `NullSink`. Catches configuration errors that `plan` can't (invalid JSONB paths, type/strategy mismatches, FK resolution failures).
+Runs the **full pipeline** — extraction, transformation, write — but the write goes to a `NullSink`. Catches configuration errors that `plan` can't (type/strategy mismatches, FK resolution failures) and shows the warnings for JSONB paths whose parent isn't an object.
 
 ```bash
 brume dry-run

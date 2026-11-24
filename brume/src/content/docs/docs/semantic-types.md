@@ -17,7 +17,7 @@ A **type** declares the *semantics* of a column so Brume knows what kind of valu
 | `IBAN` | `FAKE` · `MASK` | `FR76 3000 6000 0112 3456 7890 189` | `FR76 **** **** **** **** **** 189` |
 | `IP_ADDRESS` | `FAKE` · `MASK` | `192.168.1.42` | `192.168.*.*` |
 | `DATE` | `FAKE` | `1987-11-02` | — |
-| `JSONB` | `FAKE` | *(delegated to `json_paths`)* | — |
+| `JSONB` | *(none: one per `json_paths` entry)* | *(delegated to `json_paths`)* | — |
 
 ## Notes per type
 
@@ -49,7 +49,11 @@ Generates an IPv4 address. `MASK` keeps the first two octets (network), masks th
 With `FAKE`, draws a deterministic date — by default a plausible adult birth date between 1935 and 2008. Override the range per column with `min_year` (inclusive) and `max_year` (exclusive), both in `[1900, 2100]`. Works on `date` and `timestamp` columns. Refused on a `UNIQUE` column. To perturb a real date instead of replacing it, use the [`DATE_SHIFT`](/docs/strategies/#date_shift) strategy.
 
 ### `JSONB`
-Special type: indicates that the column is a JSONB document and Brume should delegate to the `json_paths` declaration to anonymize **specific fields** inside the document. See the [JSONB recipe](/docs/recipes/#pseudonymize-jsonb-metadata-columns).
+Special type: the column is a JSON document, and Brume anonymizes **specific fields** inside it, listed under `json_paths`. Each entry carries its own `strategy` — and a `type` for `FAKE`. The column itself takes no `strategy`. See the [`json_paths` reference](/docs/configuration/#columnsjson_paths) and the [JSONB recipe](/docs/recipes/#pseudonymize-jsonb-metadata-columns).
+
+:::note[Changed in 2.4]
+The column no longer takes a `strategy`: Brume never applied it, since each `json_paths` entry is anonymized with its own. A `strategy` left on the column is ignored, with the warning `CONFIG_JSONB_STRATEGY_IGNORED`. Up to 2.3, the column still needs one.
+:::
 
 ## Choosing a type
 

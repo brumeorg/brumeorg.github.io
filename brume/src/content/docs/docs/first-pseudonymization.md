@@ -81,7 +81,7 @@ Read the output carefully. Any column flagged as uncovered will be copied as-is 
 
 ## 4. Validate the config — `brume dry-run`
 
-`dry-run` executes the full pipeline but writes nothing (the target is a `NullSink`). It catches configuration errors that `plan` doesn't — invalid strategies, type mismatches on `FAKE`, JSONB paths that don't resolve:
+`dry-run` executes the full pipeline but writes nothing (the target is a `NullSink`). It catches configuration errors that `plan` doesn't — invalid strategies, type mismatches on `FAKE`, warnings for JSONB paths whose parent isn't an object:
 
 ```bash
 brume dry-run

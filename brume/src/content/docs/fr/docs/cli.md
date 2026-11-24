@@ -79,7 +79,7 @@ Sortie :
 
 ## `brume dry-run`
 
-Exécute le **pipeline complet** — extraction, transformation, écriture — mais l'écriture va vers un `NullSink`. Attrape les erreurs de configuration que `plan` ne peut pas (chemins JSONB invalides, incompatibilités type/stratégie, échecs de résolution FK).
+Exécute le **pipeline complet** — extraction, transformation, écriture — mais l'écriture va vers un `NullSink`. Attrape les erreurs de configuration que `plan` ne peut pas (incompatibilités type/stratégie, échecs de résolution FK) et affiche les avertissements sur les chemins JSONB dont le parent n'est pas un objet.
 
 ```bash
 brume dry-run

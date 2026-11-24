@@ -65,6 +65,8 @@ La **2.1** ne change aucune sortie. Elle accepte `FAKE` sur des colonnes reliée
 
 La **2.2** et la **2.3** ne changent aucune sortie. Dans les dumps `.sql`, la partie schéma met désormais chaque identifiant entre guillemets et retire les lignes qu'un serveur plus ancien refuse (voir [Recharger un dump sur une autre version](/fr/docs/operations/#recharger-un-dump-sur-une-autre-version)) ; les lignes de données ne changent pas.
 
+La **2.4** change une seule sortie, à titre de correctif : une valeur sous deux types sémantiques qui partagent une clé sémantique — deux chemins `FAKE` d'une même colonne JSONB (`$.first_name` et `$.last_name` valant tous deux `Martin`), ou un `linked_columns` qui regroupe des colonnes de types différents — recevait le faux du premier type rencontré. Chaque type reçoit désormais son propre faux. Toutes les autres sorties sont inchangées.
+
 ## Les clés étrangères sont préservées automatiquement
 
 Quand vous déclarez `id` de `users` en `FPE_ID`, Brume détecte chaque clé étrangère qui pointe vers `users.id` (par ex. `orders.user_id`) et la réécrit avec le **même chiffrement**. Résultat : les contraintes FK sur la cible tiennent sans désactiver de triggers. Il en va de même pour `HASH` et — depuis la 2.1 — `FAKE`, quel que soit le bout de la clé étrangère sur lequel vous déclarez la règle — un `FAKE EMAIL` sur `customers.email` s'applique aussi à `orders.customer_email` si une clé étrangère les relie.

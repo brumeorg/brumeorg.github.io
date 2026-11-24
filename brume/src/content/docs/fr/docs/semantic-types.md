@@ -17,7 +17,7 @@ Un **type** déclare la *sémantique* d'une colonne pour que Brume sache quel ty
 | `IBAN` | `FAKE` · `MASK` | `FR76 3000 6000 0112 3456 7890 189` | `FR76 **** **** **** **** **** 189` |
 | `IP_ADDRESS` | `FAKE` · `MASK` | `192.168.1.42` | `192.168.*.*` |
 | `DATE` | `FAKE` | `1987-11-02` | — |
-| `JSONB` | `FAKE` | *(délégué à `json_paths`)* | — |
+| `JSONB` | *(aucune : une par entrée `json_paths`)* | *(délégué à `json_paths`)* | — |
 
 ## Notes par type
 
@@ -49,7 +49,11 @@ Génère une adresse IPv4. `MASK` conserve les deux premiers octets (réseau), m
 Avec `FAKE`, tire une date déterministe — par défaut une date de naissance d'adulte plausible entre 1935 et 2008. La plage se règle par colonne avec `min_year` (inclus) et `max_year` (exclu), tous deux dans `[1900, 2100]`. Fonctionne sur les colonnes `date` et `timestamp`. Refusé sur une colonne `UNIQUE`. Pour décaler une vraie date plutôt que la remplacer, utilisez la stratégie [`DATE_SHIFT`](/fr/docs/strategies/#date_shift).
 
 ### `JSONB`
-Type spécial : indique que la colonne est un document JSONB et que Brume doit déléguer à la déclaration `json_paths` pour anonymiser des **champs spécifiques** à l'intérieur du document. Voir la [recette JSONB](/fr/docs/recipes/#pseudonymiser-les-colonnes-metadata-jsonb).
+Type spécial : la colonne est un document JSON, et Brume anonymise des **champs précis** à l'intérieur, listés sous `json_paths`. Chaque entrée porte sa propre `strategy` — et un `type` pour `FAKE`. La colonne elle-même ne prend pas de `strategy`. Voir la [référence `json_paths`](/fr/docs/configuration/#columnsjson_paths) et la [recette JSONB](/fr/docs/recipes/#pseudonymiser-les-colonnes-metadata-jsonb).
+
+:::note[Changé en 2.4]
+La colonne ne prend plus de `strategy` : Brume ne l'a jamais appliquée, chaque entrée `json_paths` étant anonymisée avec la sienne. Une `strategy` laissée sur la colonne est ignorée, avec l'avertissement `CONFIG_JSONB_STRATEGY_IGNORED`. Jusqu'à la 2.3, la colonne en demande encore une.
+:::
 
 ## Choisir un type
 

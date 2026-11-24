@@ -106,18 +106,20 @@ anonymization:
     - table: users
       columns:
         - name: metadata
-          strategy: FAKE
           type: JSONB
           json_paths:
             - path: $.contact.email
               type: EMAIL
+              strategy: FAKE
             - path: $.contact.phone
               type: PHONE
+              strategy: FAKE
             - path: $.shipping.address
               type: ADDRESS
+              strategy: FAKE
 ```
 
-Other paths inside `metadata` are kept as-is. Paths that don't resolve on a given row are skipped silently — but `brume dry-run` would flag a path that **never** resolves across the whole table.
+Other fields inside `metadata` are kept as-is — no `KEEP` entry is needed. Each entry carries its own `strategy`; the column takes none. A field missing from a row is left as-is, and a path whose parent isn't an object in a row is skipped for that row with a warning. Nothing reports a path that never matches: check a few rows of the target after `brume execute`. See the [limits of `json_paths`](/docs/configuration/#columnsjson_paths).
 
 ---
 

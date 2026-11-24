@@ -23,7 +23,7 @@ anonymization:     # comment transformer ce qui est copié
     - table: ...
       columns:
         - name: ...
-          strategy: ...
+          strategy: ...    # pas sur une colonne JSONB
           type: ...        # uniquement pour FAKE / MASK
           json_paths: ...  # uniquement pour JSONB
 ```
@@ -170,38 +170,56 @@ Le nom de la colonne à transformer.
 
 L'une parmi : `FAKE`, `MASK`, `HASH`, `NULLIFY`, `FPE_ID`, `FPE_UUID`, `DATE_SHIFT`, `KEEP`. Voir [stratégies](/fr/docs/strategies/).
 
+Obligatoire, sauf sur une colonne `type: JSONB` : là, chaque entrée `json_paths` porte sa propre stratégie, et une `strategy` sur la colonne est ignorée avec l'avertissement `CONFIG_JSONB_STRATEGY_IGNORED`.
+
 #### `columns[].type`
 
 Obligatoire quand `strategy` est `FAKE` ou `MASK`. L'un parmi : `EMAIL`, `FIRST_NAME`, `LAST_NAME`, `PHONE`, `IBAN`, `ADDRESS`, `IP_ADDRESS`, `DATE`, `JSONB`. Voir [types sémantiques](/fr/docs/semantic-types/).
 
 #### `columns[].json_paths`
 
-Obligatoire quand `type` est `JSONB`. Liste des chemins JSON à anonymiser à l'intérieur du document. Les autres chemins sont conservés tels quels.
+Obligatoire quand `type` est `JSONB`. Les champs à anonymiser à l'intérieur du document, chacun avec sa propre stratégie. Les autres champs sont conservés tels quels — aucune entrée `KEEP` n'est nécessaire.
 
 ```yaml
 - name: metadata
-  strategy: FAKE
   type: JSONB
   json_paths:
     - path: $.contact.email
       type: EMAIL
+      strategy: FAKE
     - path: $.contact.phone
       type: PHONE
-    - path: $.shipping.address
-      type: ADDRESS
+      strategy: FAKE
+    - path: $.session.token
+      strategy: HASH
 ```
 
 Chaque entrée de chemin accepte :
 
 | Clé | Requise | Description |
 |---|---|---|
-| `path` | oui | JSONPath (`$.champ.souschamp`) |
-| `type` | oui | Type sémantique à appliquer à ce chemin |
+| `path` | oui | Chemin depuis la racine du document, en notation pointée (`$.champ.souschamp`), à toute profondeur |
+| `strategy` | oui | Stratégie appliquée à ce champ. Jamais héritée de la colonne |
+| `type` | pour `FAKE` | Type sémantique de ce champ |
+
+Un champ absent d'une ligne, ou `null`, est laissé tel quel. Un chemin dont le parent n'est pas un objet sur une ligne est ignoré pour cette ligne, avec un avertissement. Rien ne signale un chemin qui ne correspond jamais : vérifiez quelques lignes de la cible.
+
+:::caution[Limites]
+- Le document doit être un objet JSON. Une valeur qui est un tableau (`[{...}]`) ou une valeur simple est copiée telle quelle, sans avertissement.
+- Les tableaux ne sont pas parcourus : `$.items[0].email` n'est pas pris en charge.
+- Un chemin doit mener à une valeur, pas à un objet ni à un tableau : Brume le remplacerait par une chaîne vide, même en `KEEP`.
+:::
+
+:::note[Changé en 2.4]
+Chaque entrée demande sa propre `strategy`. Avant la 2.4, une entrée sans stratégie passait la validation, puis l'exécution échouait à la première ligne. La colonne elle-même ne prend plus de `strategy` — voir [types sémantiques](/fr/docs/semantic-types/#jsonb).
+:::
 
 ## Règles de validation
 
 Brume valide la configuration au démarrage et refuse de s'exécuter sur :
 
+- Une colonne sans `strategy` — sauf une colonne `type: JSONB`.
+- Une entrée `json_paths` sans `strategy`, ou en `strategy: FAKE` sans `type`.
 - Une colonne avec `strategy: FAKE` ou `MASK` sans `type`.
 - Une colonne avec `strategy: NULLIFY` déclarée sur une colonne `NOT NULL`.
 - `MASK`, ou `FAKE` avec `type: DATE`, sur une colonne `UNIQUE` — leurs valeurs collisionneraient (voir [Colonnes UNIQUE et collisions](/fr/docs/strategies/#colonnes-unique-et-collisions)).
@@ -247,11 +265,11 @@ anonymization:
         - name: notes
           strategy: NULLIFY
         - name: metadata
-          strategy: FAKE
           type: JSONB
           json_paths:
             - path: $.shipping.address
               type: ADDRESS
+              strategy: FAKE
 
     - table: audit_logs
       columns:

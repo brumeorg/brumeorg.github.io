@@ -106,18 +106,20 @@ anonymization:
     - table: users
       columns:
         - name: metadata
-          strategy: FAKE
           type: JSONB
           json_paths:
             - path: $.contact.email
               type: EMAIL
+              strategy: FAKE
             - path: $.contact.phone
               type: PHONE
+              strategy: FAKE
             - path: $.shipping.address
               type: ADDRESS
+              strategy: FAKE
 ```
 
-Les autres chemins à l'intérieur de `metadata` sont conservés tels quels. Les chemins qui ne résolvent pas sur une ligne donnée sont ignorés silencieusement — mais `brume dry-run` signalerait un chemin qui ne résout **jamais** sur l'ensemble de la table.
+Les autres champs de `metadata` sont conservés tels quels — aucune entrée `KEEP` n'est nécessaire. Chaque entrée porte sa propre `strategy` ; la colonne n'en prend pas. Un champ absent d'une ligne est laissé tel quel, et un chemin dont le parent n'est pas un objet sur une ligne est ignoré pour cette ligne, avec un avertissement. Rien ne signale un chemin qui ne correspond jamais : vérifiez quelques lignes de la cible après `brume execute`. Voir les [limites de `json_paths`](/fr/docs/configuration/#columnsjson_paths).
 
 ---
 

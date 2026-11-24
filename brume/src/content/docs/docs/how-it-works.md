@@ -65,6 +65,8 @@ When upgrading from 1.x, pseudonymize again every database you need to join or c
 
 **2.2** and **2.3** change no output. In `.sql` dumps, the schema part now quotes every identifier and leaves out the lines an older server rejects (see [Loading a dump on another version](/docs/operations/#loading-a-dump-on-another-version)); the data rows don't change.
 
+**2.4** changes one output, as a fix: a value under two semantic types that share a semantic key — two `FAKE` paths of one JSONB column (`$.first_name` and `$.last_name` both `Martin`), or `linked_columns` grouping columns of different types — got the fake of whichever type came first. Each type now gets its own fake. Every other output is unchanged.
+
 ## Foreign keys are preserved automatically
 
 When you declare `id` of `users` as `FPE_ID`, Brume detects every foreign key that points to `users.id` (e.g. `orders.user_id`) and rewrites it with the **same encryption**. The result: FK constraints on the target hold without disabling triggers. The same goes for `HASH` and — since 2.1 — `FAKE`, whatever end of the foreign key you declare the rule on — a `FAKE EMAIL` on `customers.email` also applies to `orders.customer_email` if a foreign key links them.

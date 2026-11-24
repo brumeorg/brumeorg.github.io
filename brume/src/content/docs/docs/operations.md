@@ -67,6 +67,8 @@ Brume 2.2 and 2.3 change no pseudonymized value either. 2.2 changes two exit cod
 
 2.2 also refuses to start when a required variable is missing — see [`.env.brume` variables](/docs/env/). 2.3 only changes the Linux binary, which now starts on RHEL 8 and other glibc 2.28 systems, and makes `brume --version` print the right number (the 2.2 binary printed `2.1`).
 
+Brume 2.4 changes one kind of pseudonymized value, as a fix: a value under two semantic types that share a semantic key — two `FAKE` paths of one JSONB column, or `linked_columns` grouping columns of different types — got the fake of whichever type came first. Each type now gets its own (see [Determinism and versions](/docs/how-it-works/#determinism-and-versions)). Re-run `brume execute` only if your configuration has such a case. 2.4 also changes the JSONB configuration: each `json_paths` entry needs its own `strategy`, and the column needs none — see [`json_paths`](/docs/configuration/#columnsjson_paths). It fixes `FAKE` + `PHONE` in the native binary, `--help` on every subcommand, and the version printed by `brume diag` and the reports.
+
 ### Read-only source account
 
 See [`.env.brume` reference](/docs/env/#creating-a-read-only-account-on-the-source) for the SQL grants.
@@ -163,13 +165,27 @@ Unknown subcommand or option, or a missing value. The message suggests the close
 
 `brume.yml` contains a key Brume doesn't know — often a typo such as `fk_dpeth`. The key is ignored and the warning gives its line. Fix the spelling against the [`brume.yml` reference](/docs/configuration/).
 
-### `Strategy requires a type`
+### `CONFIG_STRATEGY_MISSING`
+
+A column or a `json_paths` entry declares no `strategy`:
 
 ```
-configuration error: column `users.email` declares strategy FAKE but no `type`
+[CONFIG_STRATEGY_MISSING] Column 'users.metadata', json_paths[1] ($.contact.phone) has no 'strategy' declared
 ```
 
-Add `type: EMAIL` (or whichever type fits). See [strategies](/docs/strategies/) and [types](/docs/semantic-types/).
+Add one — `KEEP` copies the value unchanged. A `json_paths` entry never inherits the strategy of its column. A `type: JSONB` column is the exception: it takes no `strategy` of its own. Before 2.4, this configuration passed validation and the run failed on the first row with `[UNEXPECTED] NullPointerException`.
+
+### `CONFIG_STRATEGY_REQUIRES_TYPE`
+
+```
+[CONFIG_STRATEGY_REQUIRES_TYPE] Column 'users.email' uses strategy FAKE but has no 'type' declared
+```
+
+Add `type: EMAIL` (or whichever type fits), on a column as on a `json_paths` entry. See [strategies](/docs/strategies/) and [types](/docs/semantic-types/).
+
+### `[CONFIG_JSONB_STRATEGY_IGNORED]` (warning)
+
+A `type: JSONB` column declares a `strategy`. Brume never applies it — each `json_paths` entry is anonymized with its own — so it is ignored: `strategy: NULLIFY` there does not empty the column. Remove it from the column.
 
 ### `NULLIFY on NOT NULL column`
 
@@ -179,13 +195,13 @@ configuration error: column `users.created_at` is NOT NULL but strategy is NULLI
 
 Either pick a non-null strategy (`FAKE`, `MASK`, `HASH`, `KEEP`) or `ALTER` the column to be nullable on the target.
 
-### `JSONB path does not resolve`
+### `JSON path … is not an object node` (warning)
 
 ```
-warning: path `$.contact.phone` never resolved across 12,498 rows of `users.metadata`
+JSON path '$.contact.phone' — segment 'contact' is not an object node; skipping
 ```
 
-The path is wrong or doesn't exist in any row of the column. Inspect a few rows manually and adjust the path. Brume continues processing — this is a warning, not a fatal error.
+In that row, `contact` is missing or isn't an object, so the path is skipped there. Brume goes on with the rest of the document — this is a warning, not an error. A field missing at the end of the path, or `null`, is left as-is without warning, and nothing reports a path that never matches: check a few rows of the target. See the [limits of `json_paths`](/docs/configuration/#columnsjson_paths).
 
 ### `Template secret still in use`
 

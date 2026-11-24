@@ -81,7 +81,7 @@ Lisez attentivement la sortie. Toute colonne signalée comme non couverte sera c
 
 ## 4. Valider la config — `brume dry-run`
 
-`dry-run` exécute le pipeline complet mais n'écrit rien (la cible est un `NullSink`). Il détecte les erreurs de configuration que `plan` ne voit pas — stratégies invalides, types incompatibles sur `FAKE`, chemins JSONB qui ne résolvent pas :
+`dry-run` exécute le pipeline complet mais n'écrit rien (la cible est un `NullSink`). Il détecte les erreurs de configuration que `plan` ne voit pas — stratégies invalides, types incompatibles sur `FAKE`, avertissements sur les chemins JSONB dont le parent n'est pas un objet :
 
 ```bash
 brume dry-run
